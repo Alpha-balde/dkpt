@@ -1,0 +1,9 @@
+node_modules/
+.nuxt/
+.output/
+.git
+.gitignore
+.editorconfig
+README.md
+LICENSE
+*.md

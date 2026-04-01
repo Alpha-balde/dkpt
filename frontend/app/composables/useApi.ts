@@ -3,7 +3,10 @@ export function useApi() {
   const { token, logout } = useAuth()
 
   async function apiFetch<T>(path: string, options: any = {}): Promise<T> {
-    return $fetch<T>(`${config.public.apiBase}${path}`, {
+    const baseUrl = import.meta.server && config.apiBaseInternal
+      ? config.apiBaseInternal
+      : config.public.apiBase
+    return $fetch<T>(`${baseUrl}${path}`, {
       ...options,
       headers: {
         ...options.headers,

@@ -1,6 +1,8 @@
 using System.Text;
 using Dkpt.Infrastructure;
+using Dkpt.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -88,12 +90,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// === Pipeline ===
-if (app.Environment.IsDevelopment())
+// === Auto-migrate database (for Docker deployments) ===
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
 }
+
+// === Pipeline ===
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
