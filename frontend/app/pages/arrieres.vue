@@ -91,25 +91,19 @@ function onFilterChange() {
     <!-- Filters -->
     <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label class="text-sm font-medium text-gray-700 mb-2 block">Année</label>
-          <USelect
-            v-model="yearFilter"
-            :items="yearItems"
-            value-key="value"
-            label-key="label"
-            @update:model-value="onFilterChange"
-          />
-        </div>
-        <div>
-          <label class="text-sm font-medium text-gray-700 mb-2 block">Recherche membre</label>
-          <UInput
-            v-model="search"
-            placeholder="Nom, Numéro..."
-            icon="i-lucide-search"
-            @keyup.enter="onFilterChange"
-          />
-        </div>
+        <USelect
+          v-model="yearFilter"
+          :items="yearItems"
+          value-key="value"
+          label-key="label"
+          @update:model-value="onFilterChange"
+        />
+        <UInput
+          v-model="search"
+          placeholder="Nom, Numéro..."
+          icon="i-lucide-search"
+          @keyup.enter="onFilterChange"
+        />
       </div>
     </div>
 

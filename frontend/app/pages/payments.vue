@@ -251,33 +251,25 @@ onMounted(() => {
     <!-- Filters -->
     <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
       <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <div>
-          <label class="text-sm font-medium text-gray-700 mb-2 block">Année</label>
-          <USelect
-            v-model="yearFilter"
-            :items="yearItems"
-            value-key="value"
-            label-key="label"
-            @update:model-value="onFilterChange"
-          />
-        </div>
-        <div>
-          <label class="text-sm font-medium text-gray-700 mb-2 block">Moyen de paiement</label>
-          <USelect
-            v-model="methodFilter"
-            :items="methodItems"
-            @update:model-value="onFilterChange"
-          />
-        </div>
-        <div class="lg:col-span-2">
-          <label class="text-sm font-medium text-gray-700 mb-2 block">Recherche (Membre ou Réf)</label>
-          <UInput
-            v-model="search"
-            placeholder="Nom, Numéro membre..."
-            icon="i-lucide-search"
-            @keyup.enter="onFilterChange"
-          />
-        </div>
+        <USelect
+          v-model="yearFilter"
+          :items="yearItems"
+          value-key="value"
+          label-key="label"
+          @update:model-value="onFilterChange"
+        />
+        <USelect
+          v-model="methodFilter"
+          :items="methodItems"
+          @update:model-value="onFilterChange"
+        />
+        <UInput
+          v-model="search"
+          class="lg:col-span-2"
+          placeholder="Nom, Numéro membre..."
+          icon="i-lucide-search"
+          @keyup.enter="onFilterChange"
+        />
       </div>
     </div>
 
