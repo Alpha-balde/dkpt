@@ -15,6 +15,25 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Le
 
 const { apiFetch } = useApi()
 
+const currentYear = new Date().getFullYear()
+
+// Year selector
+const { data: availableYears } = await useAsyncData('dash-years', () =>
+  apiFetch<number[]>('/Settings/years').catch(() => [] as number[])
+)
+
+const yearItems = computed(() => {
+  const items: { label: string, value: number }[] = []
+  if (availableYears.value) {
+    for (const y of availableYears.value) items.push({ label: y.toString(), value: y })
+  }
+  if (!items.find(i => i.value === currentYear)) items.push({ label: currentYear.toString(), value: currentYear })
+  return items.sort((a, b) => b.value - a.value)
+})
+
+const selectedYear = ref(currentYear)
+
+// Data fetches
 const { data: membersData } = await useAsyncData('dashboard-members', () =>
   apiFetch<PagedResult<Member>>('/Members?page=1&pageSize=1')
 )
@@ -31,20 +50,33 @@ const { data: contributions } = await useAsyncData('dashboard-contributions', ()
   apiFetch<ContributionAmount[]>('/ContributionAmounts')
 )
 
-const { data: allPayments } = await useAsyncData('dashboard-all-payments', () =>
-  apiFetch<PagedResult<Payment>>('/Payments?page=1&pageSize=100')
+const { data: allPayments, refresh: refreshPayments } = await useAsyncData(
+  'dashboard-all-payments',
+  () => apiFetch<PagedResult<Payment>>(`/Payments?page=1&pageSize=500&year=${selectedYear.value}`)
 )
 
 const { data: recentPayments } = await useAsyncData('dashboard-recent-payments', () =>
   apiFetch<PagedResult<Payment>>('/Payments?page=1&pageSize=5')
 )
 
+// Cotisations stats for arrears count
+const { data: arrearsCotis, refresh: refreshArrears } = await useAsyncData(
+  'dashboard-arrears',
+  () => apiFetch<PagedResult<any>>(`/Cotisations?page=1&pageSize=1&status=Pas en ordre&year=${selectedYear.value}`)
+)
+
 const totalMembers = computed(() => membersData.value?.totalCount || 0)
 const totalActive = computed(() => activeMembers.value?.totalCount || 0)
 const totalInactive = computed(() => inactiveMembers.value?.totalCount || 0)
-const currentYear = new Date().getFullYear()
+const arrearsCount = computed(() => arrearsCotis.value?.totalCount || 0)
 
-// Total encaissements
+// Total expected for selected year
+const expectedForYear = computed(() => {
+  const contrib = contributions.value?.find(c => c.year === selectedYear.value)
+  return (contrib?.amount || 60000) * totalMembers.value
+})
+
+// Total encaissements filtered by selected year
 const totalEncaissements = computed(() =>
   allPayments.value?.items?.reduce((sum, p) => sum + p.montant, 0) || 0
 )
@@ -53,6 +85,11 @@ const totalEncaissements = computed(() =>
 const totalFrais = computed(() =>
   allPayments.value?.items?.reduce((sum, p) => sum + p.fraisPaiement, 0) || 0
 )
+
+function onYearChange() {
+  refreshPayments()
+  refreshArrears()
+}
 
 // KPI Cards
 const stats = computed(() => [
@@ -65,7 +102,8 @@ const stats = computed(() => [
   },
   {
     label: 'Total cotisations',
-    value: allPayments.value?.totalCount || 0,
+    value: `${expectedForYear.value.toLocaleString('fr-FR')} GNF`,
+    subtitle: `Année ${selectedYear.value}`,
     icon: 'i-lucide-credit-card',
     iconColor: 'text-cyan-500',
     iconBg: 'bg-cyan-50'
@@ -73,14 +111,15 @@ const stats = computed(() => [
   {
     label: 'Encaissements',
     value: `${totalEncaissements.value.toLocaleString('fr-FR')} GNF`,
+    subtitle: `Reçus en ${selectedYear.value}`,
     icon: 'i-lucide-trending-up',
     iconColor: 'text-green-500',
     iconBg: 'bg-green-50'
   },
   {
     label: 'Total arriérés',
-    value: `${totalInactive.value}`,
-    subtitle: 'membres en retard',
+    value: arrearsCount.value,
+    subtitle: 'À recouvrer',
     icon: 'i-lucide-alert-circle',
     iconColor: 'text-pink-500',
     iconBg: 'bg-pink-50'
@@ -93,7 +132,7 @@ const monthlyData = computed(() => {
   const data = new Array(12).fill(0)
   allPayments.value?.items?.forEach(p => {
     const date = new Date(p.datePaiement)
-    if (date.getFullYear() === currentYear) {
+    if (date.getFullYear() === selectedYear.value) {
       data[date.getMonth()] += p.montant
     }
   })
@@ -167,10 +206,21 @@ const participationRate = computed(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900">Tableau de bord</h1>
-      <p class="text-sm text-gray-500 mt-1">Vue d'ensemble de l'association DKPT</p>
+    <!-- Header with year selector -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Tableau de bord</h1>
+        <p class="text-sm text-gray-500 mt-1">Vue d'ensemble des membres, cotisations et paiements.</p>
+      </div>
+      <div class="w-32">
+        <USelect
+          v-model="selectedYear"
+          :items="yearItems"
+          value-key="value"
+          label-key="label"
+          @update:model-value="onYearChange"
+        />
+      </div>
     </div>
 
     <!-- KPI Cards -->
@@ -200,7 +250,7 @@ const participationRate = computed(() => {
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-gray-900">Encaissements mensuels</h3>
           <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">
-            {{ currentYear }}
+            {{ selectedYear }}
           </span>
         </div>
         <div class="h-64">
@@ -235,7 +285,7 @@ const participationRate = computed(() => {
         <div>
           <p class="text-sm text-blue-100 font-medium">Nombre de paiements</p>
           <p class="text-3xl font-bold mt-1">{{ allPayments?.totalCount || 0 }}</p>
-          <p class="text-xs text-blue-200 mt-1">paiements enregistrés</p>
+          <p class="text-xs text-blue-200 mt-1">paiements en {{ selectedYear }}</p>
         </div>
       </div>
     </div>

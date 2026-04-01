@@ -9,7 +9,7 @@ const route = useRoute()
 const page = ref(1)
 const pageSize = 20
 const search = ref('')
-const yearFilter = ref(0)
+const yearFilter = ref(new Date().getFullYear())
 const methodFilter = ref('all')
 
 // Available years from settings
@@ -236,7 +236,7 @@ onMounted(() => {
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Paiements</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ data?.totalCount || 0 }} paiements enregistrés</p>
+        <p class="text-sm text-gray-500 mt-1">Historique des transactions enregistrées.</p>
       </div>
       <UButton
         v-if="canManagePayments"
@@ -248,37 +248,45 @@ onMounted(() => {
       </UButton>
     </div>
 
-    <!-- Filters -->
+    <!-- Filters with labels -->
     <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <USelect
-          v-model="yearFilter"
-          :items="yearItems"
-          value-key="value"
-          label-key="label"
-          placeholder="Année"
-          @update:model-value="onFilterChange"
-        />
-        <USelect
-          v-model="methodFilter"
-          :items="methodItems"
-          placeholder="Moyen de paiement"
-          @update:model-value="onFilterChange"
-        />
-        <UInput
-          v-model="search"
-          placeholder="Rechercher un membre..."
-          icon="i-lucide-search"
-          @keyup.enter="onFilterChange"
-        />
-        <UButton variant="soft" icon="i-lucide-search" @click="onFilterChange">
-          Rechercher
-        </UButton>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Année</label>
+          <USelect
+            v-model="yearFilter"
+            :items="yearItems"
+            value-key="value"
+            label-key="label"
+            @update:model-value="onFilterChange"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Moyen de paiement</label>
+          <USelect
+            v-model="methodFilter"
+            :items="methodItems"
+            @update:model-value="onFilterChange"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Recherche (Membre ou Réf)</label>
+          <UInput
+            v-model="search"
+            placeholder="Nom, Numéro membre..."
+            icon="i-lucide-search"
+            @keyup.enter="onFilterChange"
+          />
+        </div>
       </div>
     </div>
 
     <!-- Table desktop -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hidden lg:block">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900">Historique</h3>
+        <p class="text-xs text-gray-500">{{ data?.totalCount || 0 }} transactions trouvées</p>
+      </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>

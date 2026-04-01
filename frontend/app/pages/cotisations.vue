@@ -13,12 +13,14 @@ interface CotisationStat {
 }
 
 const { apiFetch } = useApi()
+const { canManagePayments } = useAuth()
 
 const page = ref(1)
 const pageSize = 20
-const yearFilter = ref<number | undefined>(undefined)
 const statusFilter = ref('all')
 const search = ref('')
+
+const currentYear = new Date().getFullYear()
 
 // Available years
 const { data: availableYears } = await useAsyncData('cotis-years', () =>
@@ -32,15 +34,25 @@ const yearItems = computed(() => {
       items.push({ label: y.toString(), value: y })
     }
   }
-  // Add current year if not present
-  const currentYear = new Date().getFullYear()
   if (!items.find(i => i.value === currentYear)) {
     items.push({ label: currentYear.toString(), value: currentYear })
   }
   return items.sort((a, b) => b.value - a.value)
 })
 
-const selectedYear = ref(0)
+// Default to current year
+const selectedYear = ref(currentYear)
+
+// Dynamic subtitle
+const subtitleYear = computed(() =>
+  selectedYear.value > 0 ? selectedYear.value.toString() : 'Toutes les années'
+)
+
+const statusItems = [
+  { label: 'Tous', value: 'all' },
+  { label: 'En ordre', value: 'En ordre' },
+  { label: 'Pas en ordre', value: 'Pas en ordre' }
+]
 
 const { data, refresh, status: fetchStatus } = await useAsyncData(
   'cotisations-list',
@@ -58,11 +70,6 @@ const { data, refresh, status: fetchStatus } = await useAsyncData(
 
 const totalPages = computed(() => Math.ceil((data.value?.totalCount || 0) / pageSize))
 
-function onSearch() {
-  page.value = 1
-  refresh()
-}
-
 function onFilterChange() {
   page.value = 1
   refresh()
@@ -75,45 +82,57 @@ function onFilterChange() {
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Cotisations</h1>
-        <p class="text-sm text-gray-500 mt-1">Suivi des cotisations par membre</p>
+        <p class="text-sm text-gray-500 mt-1">Suivi des cotisations – {{ subtitleYear }}</p>
       </div>
+      <UButton
+        v-if="canManagePayments"
+        icon="i-lucide-plus"
+        class="bg-blue-600 hover:bg-blue-700"
+        @click="navigateTo('/payments')"
+      >
+        Nouveau paiement
+      </UButton>
     </div>
 
-    <!-- Filters -->
+    <!-- Filters with labels -->
     <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <USelect
-          v-model="selectedYear"
-          :items="yearItems"
-          value-key="value"
-          label-key="label"
-          placeholder="Année"
-          @update:model-value="onFilterChange"
-        />
-        <USelect
-          v-model="statusFilter"
-          :items="[
-            { label: 'Tous les statuts', value: 'all' },
-            { label: 'En ordre', value: 'En ordre' },
-            { label: 'Pas en ordre', value: 'Pas en ordre' }
-          ]"
-          placeholder="Statut"
-          @update:model-value="onFilterChange"
-        />
-        <UInput
-          v-model="search"
-          placeholder="Rechercher un membre..."
-          icon="i-lucide-search"
-          @keyup.enter="onSearch"
-        />
-        <UButton variant="soft" icon="i-lucide-search" @click="onSearch">
-          Rechercher
-        </UButton>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Année</label>
+          <USelect
+            v-model="selectedYear"
+            :items="yearItems"
+            value-key="value"
+            label-key="label"
+            @update:model-value="onFilterChange"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Statut</label>
+          <USelect
+            v-model="statusFilter"
+            :items="statusItems"
+            @update:model-value="onFilterChange"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Recherche</label>
+          <UInput
+            v-model="search"
+            placeholder="Nom, numéro..."
+            icon="i-lucide-search"
+            @keyup.enter="onFilterChange"
+          />
+        </div>
       </div>
     </div>
 
     <!-- Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900">Historique</h3>
+        <p class="text-xs text-gray-500">{{ data?.totalCount || 0 }} résultats trouvés</p>
+      </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>

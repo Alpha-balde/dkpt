@@ -17,7 +17,8 @@ const { apiFetch } = useApi()
 const page = ref(1)
 const pageSize = 20
 const search = ref('')
-const yearFilter = ref(0)
+const currentYear = new Date().getFullYear()
+const yearFilter = ref(currentYear)
 
 // Available years
 const { data: availableYears } = await useAsyncData('arrier-years', () =>
@@ -29,10 +30,14 @@ const yearItems = computed(() => {
   if (availableYears.value) {
     for (const y of availableYears.value) items.push({ label: y.toString(), value: y })
   }
-  const cy = new Date().getFullYear()
-  if (!items.find(i => i.value === cy)) items.push({ label: cy.toString(), value: cy })
+  if (!items.find(i => i.value === currentYear)) items.push({ label: currentYear.toString(), value: currentYear })
   return items.sort((a, b) => b.value - a.value)
 })
+
+// Dynamic subtitle
+const subtitleYear = computed(() =>
+  yearFilter.value > 0 ? `pour ${yearFilter.value}` : 'toutes années confondues'
+)
 
 const { data, refresh, status: fetchStatus } = await useAsyncData(
   'arrieres',
@@ -65,17 +70,17 @@ function onFilterChange() {
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Arriérés</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ data?.totalCount || 0 }} membres en retard de paiement</p>
+        <p class="text-sm text-gray-500 mt-1">Montants en retard à recouvrer {{ subtitleYear }}.</p>
       </div>
     </div>
 
     <!-- Summary Card -->
-    <div class="bg-gradient-to-r from-red-500 to-pink-500 rounded-xl p-6 shadow-lg text-white">
+    <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 shadow-lg text-white">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm text-red-100 font-medium">Total des arriérés (page courante)</p>
+          <p class="text-sm text-red-100 font-medium">Total arriéré{{ yearFilter > 0 ? ` (${yearFilter})` : '' }}</p>
           <p class="text-4xl font-bold mt-1">{{ totalArriere.toLocaleString('fr-FR') }} GNF</p>
-          <p class="text-xs text-red-200 mt-1">{{ data?.totalCount || 0 }} membres concernés</p>
+          <p class="text-xs text-red-200 mt-1">{{ data?.totalCount || 0 }} membres en retard</p>
         </div>
         <div class="p-4 rounded-full bg-white/10">
           <UIcon name="i-lucide-alert-circle" class="w-8 h-8 text-white" />
@@ -83,26 +88,28 @@ function onFilterChange() {
       </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Filters with labels -->
     <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <USelect
-          v-model="yearFilter"
-          :items="yearItems"
-          value-key="value"
-          label-key="label"
-          placeholder="Année"
-          @update:model-value="onFilterChange"
-        />
-        <UInput
-          v-model="search"
-          placeholder="Rechercher un membre..."
-          icon="i-lucide-search"
-          @keyup.enter="onFilterChange"
-        />
-        <UButton variant="soft" icon="i-lucide-search" @click="onFilterChange">
-          Rechercher
-        </UButton>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Année</label>
+          <USelect
+            v-model="yearFilter"
+            :items="yearItems"
+            value-key="value"
+            label-key="label"
+            @update:model-value="onFilterChange"
+          />
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-gray-700">Recherche membre</label>
+          <UInput
+            v-model="search"
+            placeholder="Nom, Numéro..."
+            icon="i-lucide-search"
+            @keyup.enter="onFilterChange"
+          />
+        </div>
       </div>
     </div>
 
@@ -114,8 +121,8 @@ function onFilterChange() {
             <tr class="bg-gray-50 border-b border-gray-200">
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">N°</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Membre</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Attendu</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Payé</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Montant dû</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Déjà payé</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reste</th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
             </tr>
