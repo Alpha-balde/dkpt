@@ -1,60 +1,102 @@
-# Nuxt Starter Template
+# DKPT Frontend — Nuxt 4 + Nuxt UI v4
 
-[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
+Interface web de gestion de l'association DKPT.
 
-Use this template to get started with [Nuxt UI](https://ui.nuxt.com) quickly.
+## Stack
 
-- [Live demo](https://starter-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
+- **Framework** : Nuxt 4.4
+- **UI** : Nuxt UI v4 (125+ composants, basé sur Reka UI)
+- **CSS** : TailwindCSS v4
+- **Icônes** : Lucide Icons
+- **Auth** : JWT stocké en cookie
 
-<a href="https://starter-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png">
-    <img alt="Nuxt Starter Template" src="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png" width="830" height="466">
-  </picture>
-</a>
+## Structure
 
-> The starter template for Vue is on https://github.com/nuxt-ui-templates/starter-vue.
-
-## Quick Start
-
-```bash [Terminal]
-npm create nuxt@latest -- -t ui
+```
+app/
+├── pages/                      → Routes (file-based routing)
+│   ├── login.vue               → Connexion (layout: auth)
+│   ├── dashboard.vue           → Tableau de bord KPIs
+│   ├── members/
+│   │   ├── index.vue           → Liste membres (recherche + pagination)
+│   │   └── [id].vue            → Détail membre + historique paiements
+│   ├── payments.vue            → Liste paiements
+│   ├── cotisations.vue         → Montants cotisations par année
+│   ├── arrieres.vue            → Membres en retard (à implémenter)
+│   ├── users.vue               → Gestion utilisateurs (Admin)
+│   └── settings.vue            → Paramètres (Admin)
+│
+├── composables/
+│   ├── useAuth.ts              → Login, logout, token, rôles, permissions
+│   └── useApi.ts               → $fetch authentifié avec auto-logout 401
+│
+├── layouts/
+│   ├── default.vue             → Sidebar + navigation + dark mode
+│   └── auth.vue                → Layout minimal (login)
+│
+├── middleware/
+│   └── auth.global.ts          → Redirige vers /login si non connecté
+│
+├── types/
+│   └── index.ts                → Interfaces TS (Member, Payment, User, etc.)
+│
+└── assets/css/
+    └── main.css                → Imports Tailwind + Nuxt UI + thème
 ```
 
-## Deploy your own
+## Composables
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=starter&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fstarter&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fstarter-dark.png&demo-url=https%3A%2F%2Fstarter-template.nuxt.dev%2F&demo-title=Nuxt%20Starter%20Template&demo-description=A%20minimal%20template%20to%20get%20started%20with%20Nuxt%20UI.)
+### `useAuth()`
+```typescript
+const {
+  token,              // Ref<string | null> — JWT cookie
+  user,               // Ref<{ email, role }> — Utilisateur courant
+  isAuthenticated,    // Computed<boolean>
+  isAdmin,            // Computed<boolean>
+  canManageMembers,   // Computed<boolean> — Admin ou Secrétaire
+  canManagePayments,  // Computed<boolean> — Admin ou Trésorier
+  login(credentials), // async (email, password) => boolean
+  logout()            // Supprime token + redirige /login
+} = useAuth()
+```
 
-## Setup
+### `useApi()`
+```typescript
+const { apiFetch } = useApi()
 
-Make sure to install the dependencies:
+// Ajoute automatiquement le header Authorization: Bearer {token}
+// Appelle logout() automatiquement sur 401
+const data = await apiFetch<PagedResult<Member>>('/Members?page=1&pageSize=20')
+```
+
+## Configuration API
+
+Dans `nuxt.config.ts` :
+```typescript
+runtimeConfig: {
+  public: {
+    apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:5244/api'
+  }
+}
+```
+
+Variable d'environnement : `NUXT_PUBLIC_API_BASE`
+
+## Commandes
 
 ```bash
-pnpm install
+npm install          # Installer les dépendances
+npm run dev          # Serveur de développement (port 3000)
+npm run build        # Build production
+npm run preview      # Prévisualiser le build
+npm run lint         # ESLint
+npm run typecheck    # Vérification TypeScript
 ```
 
-## Development Server
+## Conventions
 
-Start the development server on `http://localhost:3000`:
-
-```bash
-pnpm dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-pnpm build
-```
-
-Locally preview production build:
-
-```bash
-pnpm preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+- **Pages** : Une page par fichier dans `app/pages/`, routing automatique
+- **Layouts** : `definePageMeta({ layout: 'auth' })` pour changer de layout
+- **Icônes** : Préfixe `i-lucide-` (ex: `i-lucide-users`)
+- **Couleurs Nuxt UI** : Variables CSS `--ui-text-highlighted`, `--ui-text-muted`, `--ui-border`, `--ui-bg-elevated`
+- **Composants Nuxt UI** : `UCard`, `UButton`, `UInput`, `UBadge`, `UModal`, `UPagination`, `USwitch`, etc.
