@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import type { User, PagedResult } from '~/types'
+import type { User } from '~/types'
 
 const { apiFetch } = useApi()
 const { isAdmin } = useAuth()
 const toast = useToast()
 
 const { data, refresh } = await useAsyncData('users', () =>
-  apiFetch<PagedResult<User>>('/Users?page=1&pageSize=50')
+  apiFetch<User[]>('/Users')
 )
+
+// Handle raw array response
+const users = computed(() => data.value || [])
 
 const roleBadgeClass: Record<string, string> = {
   Admin: 'bg-red-100 text-red-800',
@@ -24,13 +27,13 @@ const roleItems = [
 ]
 
 const roleStats = computed(() => {
-  const users = data.value?.items || []
+  const list = users.value
   return [
-    { label: 'Total', value: users.length, icon: 'i-lucide-users', bg: 'bg-white', text: 'text-gray-900', iconColor: 'text-gray-500' },
-    { label: 'Admins', value: users.filter(u => u.role === 'Admin').length, icon: 'i-lucide-shield', bg: 'bg-red-50', text: 'text-red-700', iconColor: 'text-red-500' },
-    { label: 'Secrétaires', value: users.filter(u => u.role === 'Secretaire').length, icon: 'i-lucide-file-text', bg: 'bg-blue-50', text: 'text-blue-700', iconColor: 'text-blue-500' },
-    { label: 'Trésoriers', value: users.filter(u => u.role === 'Tresorier').length, icon: 'i-lucide-wallet', bg: 'bg-green-50', text: 'text-green-700', iconColor: 'text-green-500' },
-    { label: 'Lecteurs', value: users.filter(u => u.role === 'Lecteur').length, icon: 'i-lucide-eye', bg: 'bg-gray-50', text: 'text-gray-700', iconColor: 'text-gray-500' }
+    { label: 'Total', value: list.length, icon: 'i-lucide-users', bg: 'bg-white', text: 'text-gray-900', iconColor: 'text-gray-500' },
+    { label: 'Admins', value: list.filter(u => u.role === 'Admin').length, icon: 'i-lucide-shield', bg: 'bg-red-50', text: 'text-red-700', iconColor: 'text-red-500' },
+    { label: 'Secrétaires', value: list.filter(u => u.role === 'Secretaire').length, icon: 'i-lucide-file-text', bg: 'bg-blue-50', text: 'text-blue-700', iconColor: 'text-blue-500' },
+    { label: 'Trésoriers', value: list.filter(u => u.role === 'Tresorier').length, icon: 'i-lucide-wallet', bg: 'bg-green-50', text: 'text-green-700', iconColor: 'text-green-500' },
+    { label: 'Lecteurs', value: list.filter(u => u.role === 'Lecteur').length, icon: 'i-lucide-eye', bg: 'bg-gray-50', text: 'text-gray-700', iconColor: 'text-gray-500' }
   ]
 })
 
@@ -174,7 +177,7 @@ async function deleteUser() {
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr
-              v-for="u in data?.items"
+              v-for="u in users"
               :key="u.id"
               class="hover:bg-gray-50 transition-colors"
             >
