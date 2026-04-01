@@ -9,12 +9,34 @@ const search = ref('')
 const statusFilter = ref('all')
 const page = ref(1)
 const pageSize = 20
+const normalizedStatusFilter = computed(() => {
+  if (typeof statusFilter.value === 'string') return statusFilter.value
+
+  if (statusFilter.value && typeof statusFilter.value === 'object' && 'value' in statusFilter.value) {
+    return String((statusFilter.value as { value: unknown }).value)
+  }
+
+  return 'all'
+})
 
 const { data, refresh, status } = await useAsyncData(
   'members',
-  () => apiFetch<PagedResult<Member>>(
-    `/Members?page=${page.value}&pageSize=${pageSize}${search.value ? `&search=${encodeURIComponent(search.value)}` : ''}${statusFilter.value !== 'all' ? `&status=${statusFilter.value}` : ''}`
-  ),
+  () => {
+    const actifFilter = normalizedStatusFilter.value === 'actif'
+      ? '&actif=true'
+      : normalizedStatusFilter.value === 'inactif'
+        ? '&actif=false'
+        : ''
+    const legacyStatusFilter = normalizedStatusFilter.value === 'actif'
+      ? '&status=Actif'
+      : normalizedStatusFilter.value === 'inactif'
+        ? '&status=Inactif'
+        : ''
+
+    return apiFetch<PagedResult<Member>>(
+      `/Members?page=${page.value}&pageSize=${pageSize}${search.value ? `&search=${encodeURIComponent(search.value)}` : ''}${actifFilter}${legacyStatusFilter}`
+    )
+  },
   { watch: [page] }
 )
 
@@ -29,6 +51,10 @@ function onFilterChange() {
   page.value = 1
   refresh()
 }
+
+watch(normalizedStatusFilter, () => {
+  onFilterChange()
+})
 
 // Year options for selects (2010 → current year + 1)
 const currentYear = new Date().getFullYear()
@@ -184,8 +210,9 @@ async function deleteMember() {
             { label: 'Actifs', value: 'actif' },
             { label: 'Inactifs', value: 'inactif' }
           ]"
+          value-key="value"
+          label-key="label"
           placeholder="Statut"
-          @update:model-value="onFilterChange"
         />
         <UButton variant="soft" icon="i-lucide-search" @click="onSearch">
           Rechercher

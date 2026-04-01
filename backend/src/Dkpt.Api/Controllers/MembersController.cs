@@ -22,9 +22,14 @@ public class MembersController : ControllerBase
         [FromQuery] string? search = null,
         [FromQuery] string? village = null,
         [FromQuery] string? status = null,
+        [FromQuery] bool? actif = null,
         CancellationToken ct = default)
     {
-        var (items, totalCount) = await _memberRepo.GetPagedAsync(page, pageSize, search, village, status, ct);
+        var normalizedStatus = actif.HasValue
+            ? (actif.Value ? "Actif" : "Inactif")
+            : status;
+
+        var (items, totalCount) = await _memberRepo.GetPagedAsync(page, pageSize, search, village, normalizedStatus, ct);
 
         var dtos = items.Select(m => new MemberDto(
             m.Id, m.NumeroMembre, m.Prenom, m.Nom,

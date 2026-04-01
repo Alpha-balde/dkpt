@@ -32,8 +32,15 @@ public class MemberRepository : IMemberRepository
         if (!string.IsNullOrWhiteSpace(village) && village != "all")
             query = query.Where(m => m.Village == village);
 
-        if (!string.IsNullOrWhiteSpace(status) && status != "all")
-            query = query.Where(m => status == "Actif" ? m.Actif : !m.Actif);
+        var normalizedStatus = status?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedStatus) &&
+            !normalizedStatus.Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            if (normalizedStatus.Equals("Actif", StringComparison.OrdinalIgnoreCase))
+                query = query.Where(m => m.Actif);
+            else if (normalizedStatus.Equals("Inactif", StringComparison.OrdinalIgnoreCase))
+                query = query.Where(m => !m.Actif);
+        }
 
         var totalCount = await query.CountAsync(ct);
         var items = await query
