@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
-import type { Member, Payment, PagedResult, ContributionAmount } from '~/types'
+import type { Member, Payment, PagedResult } from '~/types'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
@@ -38,18 +38,6 @@ const { data: membersData } = await useAsyncData('dashboard-members', () =>
   apiFetch<PagedResult<Member>>('/Members?page=1&pageSize=1')
 )
 
-const { data: activeMembers } = await useAsyncData('dashboard-active', () =>
-  apiFetch<PagedResult<Member>>('/Members?page=1&pageSize=1&actif=true')
-)
-
-const { data: inactiveMembers } = await useAsyncData('dashboard-inactive', () =>
-  apiFetch<PagedResult<Member>>('/Members?page=1&pageSize=1&actif=false')
-)
-
-const { data: contributions } = await useAsyncData('dashboard-contributions', () =>
-  apiFetch<ContributionAmount[]>('/ContributionAmounts')
-)
-
 const { data: allPayments, refresh: refreshPayments } = await useAsyncData(
   'dashboard-all-payments',
   () => apiFetch<PagedResult<Payment>>(`/Payments?page=1&pageSize=500&year=${selectedYear.value}`)
@@ -66,8 +54,6 @@ const { data: arrearsCotis, refresh: refreshArrears } = await useAsyncData(
 )
 
 const totalMembers = computed(() => membersData.value?.totalCount || 0)
-const totalActive = computed(() => activeMembers.value?.totalCount || 0)
-const totalInactive = computed(() => inactiveMembers.value?.totalCount || 0)
 const arrearsCount = computed(() => arrearsCotis.value?.totalCount || 0)
 
 // Total encaissements filtered by selected year
@@ -169,11 +155,13 @@ const barChartOptions = {
   }
 }
 
-// Doughnut Chart — Répartition membres
+// Doughnut Chart — Répartition membres (En ordre vs Pas en ordre)
+const membresEnOrdre = computed(() => totalMembers.value - arrearsCount.value)
+
 const doughnutData = computed(() => ({
-  labels: ['Actifs', 'Inactifs'],
+  labels: ['En ordre', 'Pas en ordre'],
   datasets: [{
-    data: [totalActive.value, totalInactive.value],
+    data: [membresEnOrdre.value, arrearsCount.value],
     backgroundColor: ['#22c55e', '#ec4899'],
     borderWidth: 0
   }]
@@ -191,10 +179,10 @@ const doughnutOptions = {
   }
 }
 
-// Taux de participation
+// Taux de participation (en ordre)
 const participationRate = computed(() => {
   if (!totalMembers.value) return 0
-  return Math.round((totalActive.value / totalMembers.value) * 100)
+  return Math.round((membresEnOrdre.value / totalMembers.value) * 100)
 })
 </script>
 
@@ -269,7 +257,7 @@ const participationRate = computed(() => {
         <div>
           <p class="text-sm text-blue-100 font-medium">Taux de participation</p>
           <p class="text-3xl font-bold mt-1">{{ participationRate }}%</p>
-          <p class="text-xs text-blue-200 mt-1">{{ totalActive }} / {{ totalMembers }} membres</p>
+          <p class="text-xs text-blue-200 mt-1">{{ membresEnOrdre }} / {{ totalMembers }} membres</p>
         </div>
         <div>
           <p class="text-sm text-blue-100 font-medium">Frais de paiement</p>
