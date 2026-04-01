@@ -6,14 +6,14 @@ const { canManageMembers, isAdmin } = useAuth()
 const toast = useToast()
 
 const search = ref('')
-const statusFilter = ref('')
+const statusFilter = ref('all')
 const page = ref(1)
 const pageSize = 20
 
 const { data, refresh, status } = await useAsyncData(
   'members',
   () => apiFetch<PagedResult<Member>>(
-    `/Members?page=${page.value}&pageSize=${pageSize}${search.value ? `&search=${encodeURIComponent(search.value)}` : ''}${statusFilter.value !== '' ? `&actif=${statusFilter.value}` : ''}`
+    `/Members?page=${page.value}&pageSize=${pageSize}${search.value ? `&search=${encodeURIComponent(search.value)}` : ''}${statusFilter.value !== 'all' ? `&actif=${statusFilter.value}` : ''}`
   ),
   { watch: [page] }
 )
@@ -102,7 +102,7 @@ async function deleteMember(member: Member) {
       <USelect
         v-model="statusFilter"
         :items="[
-          { label: 'Tous les statuts', value: '' },
+          { label: 'Tous les statuts', value: 'all' },
           { label: 'Actifs', value: 'true' },
           { label: 'Inactifs', value: 'false' }
         ]"
