@@ -8,7 +8,11 @@ public class ContributionAmountConfiguration : IEntityTypeConfiguration<Contribu
 {
     public void Configure(EntityTypeBuilder<ContributionAmount> builder)
     {
-        builder.ToTable("contribution_amounts");
+        builder.ToTable("contribution_amounts", t =>
+        {
+            t.HasCheckConstraint("chk_contribution_amount_positive", "\"amount\" > 0");
+            t.HasCheckConstraint("chk_contribution_year_min", "\"year\" >= 2022");
+        });
 
         builder.HasKey(c => c.Year);
         builder.Property(c => c.Year).HasColumnName("year").ValueGeneratedNever();

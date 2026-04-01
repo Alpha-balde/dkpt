@@ -24,6 +24,7 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .IsRequired();
         builder.Property(p => p.Reference).HasColumnName("reference");
         builder.Property(p => p.Note).HasColumnName("note");
+        builder.Property(p => p.CreatedByUserId).HasColumnName("created_by_user_id");
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("NOW()");
 
@@ -31,5 +32,10 @@ public class PaymentConfiguration : IEntityTypeConfiguration<Payment>
             .WithMany(m => m.Payments)
             .HasForeignKey(p => p.MemberId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(p => p.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(p => p.CreatedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<User> Users => Set<User>();
     public DbSet<ContributionAmount> ContributionAmounts => Set<ContributionAmount>();
+    public DbSet<Setting> Settings => Set<Setting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

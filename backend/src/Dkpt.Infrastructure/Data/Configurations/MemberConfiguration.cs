@@ -20,6 +20,7 @@ public class MemberConfiguration : IEntityTypeConfiguration<Member>
         builder.Property(m => m.Residence).HasColumnName("residence");
         builder.Property(m => m.Village).HasColumnName("village");
         builder.Property(m => m.SousPrefecture).HasColumnName("sous_prefecture_origine");
+        builder.Property(m => m.NomCompletRaw).HasColumnName("nom_complet_raw");
         builder.Property(m => m.AnneeDebut).HasColumnName("annee_debut");
         builder.Property(m => m.Actif).HasColumnName("actif").HasDefaultValue(true);
         builder.Property(m => m.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");

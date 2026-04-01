@@ -12,6 +12,7 @@ public class Member : BaseEntity
     public string? Residence { get; set; }
     public string? Village { get; set; }
     public string? SousPrefecture { get; set; }
+    public string? NomCompletRaw { get; set; }
     public int AnneeDebut { get; set; } = DateTime.UtcNow.Year;
     public bool Actif { get; set; } = true;
 

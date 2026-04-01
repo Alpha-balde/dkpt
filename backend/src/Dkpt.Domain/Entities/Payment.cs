@@ -13,7 +13,9 @@ public class Payment : BaseEntity
     public PaymentMethod MoyenPaiement { get; set; } = PaymentMethod.Especes;
     public string? Reference { get; set; }
     public string? Note { get; set; }
+    public Guid? CreatedByUserId { get; set; }
 
     // Navigation
     public Member Member { get; set; } = null!;
+    public User? CreatedByUser { get; set; }
 }
