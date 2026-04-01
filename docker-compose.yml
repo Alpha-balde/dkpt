@@ -2,13 +2,12 @@
 # DKPT — Docker Compose
 # ============================================
 # Usage:
-#   docker compose up --build -d          → Build et lancement
-#   docker compose logs -f                → Voir les logs
-#   docker compose down                   → Arrêter
-#   docker compose down -v                → Arrêter + supprimer les volumes
-#
-# Après le premier lancement, importer les données :
-#   docker compose exec -T db psql -U postgres -d dkpt < docker/seed/seed-data.sql
+#   docker compose --profile seed up --build -d  → Build + seed automatique (1er lancement)
+#   docker compose up -d                         → Lancement normal (données persistées)
+#   docker compose logs seed                     → Voir les logs du seed
+#   docker compose logs -f                       → Voir les logs de tous les services
+#   docker compose down                          → Arrêter
+#   docker compose down -v                       → Arrêter + supprimer les volumes
 
 services:
   # ---- PostgreSQL 16 ----
@@ -50,6 +49,12 @@ services:
         condition: service_healthy
     networks:
       - dkpt-net
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080' 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
     restart: unless-stopped
 
   # ---- Frontend Nuxt 4 SSR ----
@@ -81,6 +86,27 @@ services:
     networks:
       - dkpt-net
     restart: unless-stopped
+
+  # ---- Seed Data (one-shot, profil optionnel) ----
+  seed:
+    image: postgres:16-alpine
+    container_name: dkpt-seed
+    profiles: [seed]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./docker/seed:/seed:ro
+      - ../docs/dkpt_sql:/data:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    entrypoint: ["sh", "/seed/run-seed.sh"]
+    networks:
+      - dkpt-net
+    restart: "no"
 
 volumes:
   dkpt-pgdata:
