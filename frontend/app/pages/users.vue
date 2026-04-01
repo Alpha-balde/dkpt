@@ -2,6 +2,7 @@
 import type { User, PagedResult } from '~/types'
 
 const { apiFetch } = useApi()
+const { isAdmin } = useAuth()
 const toast = useToast()
 
 const { data, refresh } = await useAsyncData('users', () =>
@@ -14,6 +15,13 @@ const roleBadgeClass: Record<string, string> = {
   Tresorier: 'bg-green-100 text-green-800',
   Lecteur: 'bg-gray-100 text-gray-800'
 }
+
+const roleItems = [
+  { label: 'Admin', value: 'Admin' },
+  { label: 'Secrétaire', value: 'Secretaire' },
+  { label: 'Trésorier', value: 'Tresorier' },
+  { label: 'Lecteur', value: 'Lecteur' }
+]
 
 const roleStats = computed(() => {
   const users = data.value?.items || []
@@ -33,11 +41,79 @@ const roleDescriptions: Record<string, string> = {
   Lecteur: 'Accès en lecture seule à toutes les données.'
 }
 
-async function deleteUser(user: User) {
-  if (!confirm(`Supprimer l'utilisateur ${user.email} ?`)) return
+// ===== CREATE USER =====
+const showCreateModal = ref(false)
+const createForm = reactive({ email: '', password: '', role: 'Lecteur' })
+const creating = ref(false)
+
+function openCreateModal() {
+  Object.assign(createForm, { email: '', password: '', role: 'Lecteur' })
+  showCreateModal.value = true
+}
+
+async function createUser() {
+  if (!createForm.email || !createForm.password) {
+    toast.add({ title: 'Email et mot de passe requis', color: 'warning' })
+    return
+  }
+  creating.value = true
   try {
-    await apiFetch(`/Users/${user.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Utilisateur supprimé', color: 'success' })
+    await apiFetch('/Users', { method: 'POST', body: createForm })
+    toast.add({ title: 'Utilisateur créé', color: 'success', icon: 'i-lucide-check-circle' })
+    showCreateModal.value = false
+    refresh()
+  } catch (err: any) {
+    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible de créer', color: 'error' })
+  } finally {
+    creating.value = false
+  }
+}
+
+// ===== EDIT USER (role only) =====
+const showEditModal = ref(false)
+const editingUser = ref<User | null>(null)
+const editForm = reactive({ role: 'Lecteur' })
+const saving = ref(false)
+
+function openEditModal(user: User) {
+  editingUser.value = user
+  editForm.role = user.role
+  showEditModal.value = true
+}
+
+async function updateUser() {
+  if (!editingUser.value) return
+  saving.value = true
+  try {
+    await apiFetch(`/Users/${editingUser.value.id}`, {
+      method: 'PUT',
+      body: { role: editForm.role }
+    })
+    toast.add({ title: 'Rôle modifié', color: 'success', icon: 'i-lucide-check-circle' })
+    showEditModal.value = false
+    refresh()
+  } catch (err: any) {
+    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible de modifier', color: 'error' })
+  } finally {
+    saving.value = false
+  }
+}
+
+// ===== DELETE USER =====
+const showDeleteConfirm = ref(false)
+const deletingUser = ref<User | null>(null)
+
+function confirmDelete(user: User) {
+  deletingUser.value = user
+  showDeleteConfirm.value = true
+}
+
+async function deleteUser() {
+  if (!deletingUser.value) return
+  try {
+    await apiFetch(`/Users/${deletingUser.value.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Utilisateur supprimé', color: 'success', icon: 'i-lucide-trash-2' })
+    showDeleteConfirm.value = false
     refresh()
   } catch {
     toast.add({ title: 'Erreur de suppression', color: 'error' })
@@ -48,12 +124,22 @@ async function deleteUser(user: User) {
 <template>
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center gap-3">
-      <UIcon name="i-lucide-user-cog" class="w-8 h-8 text-gray-400" />
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900">Utilisateurs</h1>
-        <p class="text-sm text-gray-500 mt-1">Gestion des comptes et rôles</p>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <UIcon name="i-lucide-user-cog" class="w-8 h-8 text-gray-400" />
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Utilisateurs</h1>
+          <p class="text-sm text-gray-500 mt-1">Gestion des comptes et rôles</p>
+        </div>
       </div>
+      <UButton
+        v-if="isAdmin"
+        icon="i-lucide-plus"
+        class="bg-blue-600 hover:bg-blue-700"
+        @click="openCreateModal"
+      >
+        Nouvel utilisateur
+      </UButton>
     </div>
 
     <!-- Role Stats Cards -->
@@ -81,8 +167,9 @@ async function deleteUser(user: User) {
             <tr class="bg-gray-50 border-b border-gray-200">
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Rôle</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Permissions</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Créé le</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+              <th v-if="isAdmin" class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -97,25 +184,23 @@ async function deleteUser(user: User) {
                   {{ u.role }}
                 </span>
               </td>
+              <td class="px-4 py-3 text-xs text-gray-500 max-w-[250px]">
+                {{ roleDescriptions[u.role] || '—' }}
+              </td>
               <td class="px-4 py-3 text-gray-600">{{ new Date(u.createdAt).toLocaleDateString('fr-FR') }}</td>
-              <td class="px-4 py-3">
+              <td v-if="isAdmin" class="px-4 py-3">
                 <div class="flex items-center justify-end gap-1">
                   <button
                     class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Voir"
-                  >
-                    <UIcon name="i-lucide-eye" class="w-4 h-4" />
-                  </button>
-                  <button
-                    class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Modifier"
+                    title="Modifier le rôle"
+                    @click="openEditModal(u)"
                   >
                     <UIcon name="i-lucide-pencil" class="w-4 h-4" />
                   </button>
                   <button
                     class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                     title="Supprimer"
-                    @click="deleteUser(u)"
+                    @click="confirmDelete(u)"
                   >
                     <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
                   </button>
@@ -139,5 +224,71 @@ async function deleteUser(user: User) {
         </div>
       </div>
     </div>
+
+    <!-- CREATE MODAL -->
+    <UModal v-model:open="showCreateModal">
+      <template #header>
+        <h3 class="text-lg font-semibold text-gray-900">Nouvel utilisateur</h3>
+      </template>
+      <template #body>
+        <form class="space-y-4" @submit.prevent="createUser">
+          <div class="space-y-1">
+            <label class="text-sm font-medium text-gray-700">Email *</label>
+            <UInput v-model="createForm.email" type="email" placeholder="utilisateur@dkpt.com" required />
+          </div>
+          <div class="space-y-1">
+            <label class="text-sm font-medium text-gray-700">Mot de passe *</label>
+            <UInput v-model="createForm.password" type="password" placeholder="Min. 8 caractères" required />
+          </div>
+          <div class="space-y-1">
+            <label class="text-sm font-medium text-gray-700">Rôle</label>
+            <USelect v-model="createForm.role" :items="roleItems" />
+          </div>
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <UButton variant="outline" type="button" @click="showCreateModal = false">Annuler</UButton>
+            <UButton type="submit" :loading="creating" icon="i-lucide-save" class="bg-blue-600 hover:bg-blue-700">Créer</UButton>
+          </div>
+        </form>
+      </template>
+    </UModal>
+
+    <!-- EDIT MODAL -->
+    <UModal v-model:open="showEditModal">
+      <template #header>
+        <h3 class="text-lg font-semibold text-gray-900">Modifier le rôle</h3>
+      </template>
+      <template #body>
+        <div class="space-y-4">
+          <p class="text-sm text-gray-600">
+            Modifier le rôle de <strong>{{ editingUser?.email }}</strong>
+          </p>
+          <div class="space-y-1">
+            <label class="text-sm font-medium text-gray-700">Rôle</label>
+            <USelect v-model="editForm.role" :items="roleItems" />
+          </div>
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+            <UButton variant="outline" @click="showEditModal = false">Annuler</UButton>
+            <UButton :loading="saving" icon="i-lucide-save" class="bg-blue-600 hover:bg-blue-700" @click="updateUser">Enregistrer</UButton>
+          </div>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- DELETE CONFIRM -->
+    <UModal v-model:open="showDeleteConfirm">
+      <template #header>
+        <h3 class="text-lg font-semibold text-red-600">Confirmer la suppression</h3>
+      </template>
+      <template #body>
+        <p class="text-sm text-gray-600">
+          Supprimer l'utilisateur <strong>{{ deletingUser?.email }}</strong> ({{ deletingUser?.role }}) ?
+          Cette action est irréversible.
+        </p>
+        <div class="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
+          <UButton variant="outline" @click="showDeleteConfirm = false">Annuler</UButton>
+          <UButton color="error" icon="i-lucide-trash-2" @click="deleteUser">Supprimer</UButton>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
