@@ -70,12 +70,6 @@ const totalActive = computed(() => activeMembers.value?.totalCount || 0)
 const totalInactive = computed(() => inactiveMembers.value?.totalCount || 0)
 const arrearsCount = computed(() => arrearsCotis.value?.totalCount || 0)
 
-// Total expected for selected year
-const expectedForYear = computed(() => {
-  const contrib = contributions.value?.find(c => c.year === selectedYear.value)
-  return (contrib?.amount || 60000) * totalMembers.value
-})
-
 // Total encaissements filtered by selected year
 const totalEncaissements = computed(() =>
   allPayments.value?.items?.reduce((sum, p) => sum + p.montant, 0) || 0
@@ -102,7 +96,7 @@ const stats = computed(() => [
   },
   {
     label: 'Total cotisations',
-    value: `${expectedForYear.value.toLocaleString('fr-FR')} GNF`,
+    value: `${totalEncaissements.value.toLocaleString('fr-FR')} GNF`,
     subtitle: `Année ${selectedYear.value}`,
     icon: 'i-lucide-credit-card',
     iconColor: 'text-cyan-500',
