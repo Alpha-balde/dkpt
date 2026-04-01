@@ -1,5 +1,17 @@
 <script setup lang="ts">
-import type { Member, PagedResult, ContributionAmount } from '~/types'
+import { Bar, Doughnut } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend
+} from 'chart.js'
+import type { Member, Payment, PagedResult, ContributionAmount } from '~/types'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 const { apiFetch } = useApi()
 
@@ -11,139 +23,252 @@ const { data: activeMembers } = await useAsyncData('dashboard-active', () =>
   apiFetch<PagedResult<Member>>('/Members?page=1&pageSize=1&actif=true')
 )
 
+const { data: inactiveMembers } = await useAsyncData('dashboard-inactive', () =>
+  apiFetch<PagedResult<Member>>('/Members?page=1&pageSize=1&actif=false')
+)
+
 const { data: contributions } = await useAsyncData('dashboard-contributions', () =>
   apiFetch<ContributionAmount[]>('/ContributionAmounts')
 )
 
+const { data: allPayments } = await useAsyncData('dashboard-all-payments', () =>
+  apiFetch<PagedResult<Payment>>('/Payments?page=1&pageSize=100')
+)
+
 const { data: recentPayments } = await useAsyncData('dashboard-recent-payments', () =>
-  apiFetch<PagedResult<any>>('/Payments?page=1&pageSize=5')
+  apiFetch<PagedResult<Payment>>('/Payments?page=1&pageSize=5')
 )
 
 const totalMembers = computed(() => membersData.value?.totalCount || 0)
 const totalActive = computed(() => activeMembers.value?.totalCount || 0)
-const totalInactive = computed(() => totalMembers.value - totalActive.value)
+const totalInactive = computed(() => inactiveMembers.value?.totalCount || 0)
 const currentYear = new Date().getFullYear()
-const currentContribution = computed(() =>
-  contributions.value?.find(c => c.year === currentYear)?.amount || 0
+
+// Total encaissements
+const totalEncaissements = computed(() =>
+  allPayments.value?.items?.reduce((sum, p) => sum + p.montant, 0) || 0
 )
 
+// Total frais
+const totalFrais = computed(() =>
+  allPayments.value?.items?.reduce((sum, p) => sum + p.fraisPaiement, 0) || 0
+)
+
+// KPI Cards
 const stats = computed(() => [
   {
     label: 'Total membres',
     value: totalMembers.value,
     icon: 'i-lucide-users',
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10'
+    iconColor: 'text-blue-500',
+    iconBg: 'bg-blue-50'
   },
   {
-    label: 'Membres actifs',
-    value: totalActive.value,
-    icon: 'i-lucide-user-check',
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10'
+    label: 'Total cotisations',
+    value: allPayments.value?.totalCount || 0,
+    icon: 'i-lucide-credit-card',
+    iconColor: 'text-cyan-500',
+    iconBg: 'bg-cyan-50'
   },
   {
-    label: 'Membres inactifs',
-    value: totalInactive.value,
-    icon: 'i-lucide-user-x',
-    color: 'text-red-500',
-    bg: 'bg-red-500/10'
+    label: 'Encaissements',
+    value: `${totalEncaissements.value.toLocaleString('fr-FR')} GNF`,
+    icon: 'i-lucide-trending-up',
+    iconColor: 'text-green-500',
+    iconBg: 'bg-green-50'
   },
   {
-    label: `Cotisation ${currentYear}`,
-    value: `${currentContribution.value.toLocaleString('fr-FR')} GNF`,
-    icon: 'i-lucide-banknote',
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/10'
+    label: 'Total arriérés',
+    value: `${totalInactive.value}`,
+    subtitle: 'membres en retard',
+    icon: 'i-lucide-alert-circle',
+    iconColor: 'text-pink-500',
+    iconBg: 'bg-pink-50'
   }
 ])
+
+// Bar Chart — Encaissements par mois
+const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+const monthlyData = computed(() => {
+  const data = new Array(12).fill(0)
+  allPayments.value?.items?.forEach(p => {
+    const date = new Date(p.datePaiement)
+    if (date.getFullYear() === currentYear) {
+      data[date.getMonth()] += p.montant
+    }
+  })
+  return data
+})
+
+const barChartData = computed(() => ({
+  labels: months,
+  datasets: [{
+    label: 'Encaissements (GNF)',
+    data: monthlyData.value,
+    backgroundColor: '#22d3ee',
+    borderRadius: { topLeft: 6, topRight: 6 },
+    borderSkipped: 'bottom'
+  }]
+}))
+
+const barChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: (ctx: any) => `${ctx.parsed.y.toLocaleString('fr-FR')} GNF`
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        callback: (val: any) => `${(val / 1000).toFixed(0)}k`
+      },
+      grid: { color: '#f3f4f6' }
+    },
+    x: {
+      grid: { display: false }
+    }
+  }
+}
+
+// Doughnut Chart — Répartition membres
+const doughnutData = computed(() => ({
+  labels: ['Actifs', 'Inactifs'],
+  datasets: [{
+    data: [totalActive.value, totalInactive.value],
+    backgroundColor: ['#22c55e', '#ec4899'],
+    borderWidth: 0
+  }]
+}))
+
+const doughnutOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '65%',
+  plugins: {
+    legend: {
+      position: 'bottom' as const,
+      labels: { usePointStyle: true, padding: 16 }
+    }
+  }
+}
+
+// Taux de participation
+const participationRate = computed(() => {
+  if (!totalMembers.value) return 0
+  return Math.round((totalActive.value / totalMembers.value) * 100)
+})
 </script>
 
 <template>
   <div class="space-y-6">
     <!-- Header -->
     <div>
-      <h1 class="text-2xl font-bold text-(--ui-text-highlighted)">Tableau de bord</h1>
-      <p class="text-sm text-(--ui-text-muted)">Vue d'ensemble de l'association DKPT</p>
+      <h1 class="text-3xl font-bold text-gray-900">Tableau de bord</h1>
+      <p class="text-sm text-gray-500 mt-1">Vue d'ensemble de l'association DKPT</p>
     </div>
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <UCard v-for="stat in stats" :key="stat.label">
-        <div class="flex items-center gap-4">
-          <div :class="[stat.bg, 'p-3 rounded-xl']">
-            <UIcon :name="stat.icon" :class="[stat.color, 'w-6 h-6']" />
-          </div>
+      <div
+        v-for="stat in stats"
+        :key="stat.label"
+        class="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+      >
+        <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-(--ui-text-muted)">{{ stat.label }}</p>
-            <p class="text-xl font-bold text-(--ui-text-highlighted)">{{ stat.value }}</p>
+            <p class="text-sm text-gray-500 font-medium">{{ stat.label }}</p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">{{ stat.value }}</p>
+            <p v-if="stat.subtitle" class="text-sm text-gray-400 mt-1">{{ stat.subtitle }}</p>
+          </div>
+          <div :class="[stat.iconBg, 'p-3 rounded-full']">
+            <UIcon :name="stat.icon" :class="[stat.iconColor, 'w-6 h-6']" />
           </div>
         </div>
-      </UCard>
+      </div>
     </div>
 
-    <!-- Contribution amounts + recent payments -->
+    <!-- Charts Row -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Cotisations par année -->
-      <UCard>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-calendar" class="w-5 h-5 text-(--ui-text-muted)" />
-            <h3 class="font-semibold text-(--ui-text-highlighted)">Montants cotisations</h3>
-          </div>
-        </template>
-
-        <div class="divide-y divide-(--ui-border)">
-          <div
-            v-for="c in contributions?.sort((a, b) => b.year - a.year)"
-            :key="c.year"
-            class="flex items-center justify-between py-3"
-          >
-            <div class="flex items-center gap-3">
-              <UBadge :label="String(c.year)" variant="subtle" />
-            </div>
-            <span class="font-semibold text-(--ui-text-highlighted)">
-              {{ c.amount.toLocaleString('fr-FR') }} GNF
-            </span>
-          </div>
+      <!-- Bar Chart — Encaissements mensuels -->
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Encaissements mensuels</h3>
+          <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">
+            {{ currentYear }}
+          </span>
         </div>
-      </UCard>
-
-      <!-- Derniers paiements -->
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-credit-card" class="w-5 h-5 text-(--ui-text-muted)" />
-              <h3 class="font-semibold text-(--ui-text-highlighted)">Derniers paiements</h3>
-            </div>
-            <UButton to="/payments" variant="ghost" size="xs" trailing-icon="i-lucide-arrow-right">
-              Voir tout
-            </UButton>
-          </div>
-        </template>
-
-        <div class="divide-y divide-(--ui-border)">
-          <div
-            v-for="p in recentPayments?.items"
-            :key="p.id"
-            class="flex items-center justify-between py-3"
-          >
-            <div>
-              <p class="text-sm font-medium text-(--ui-text-highlighted)">
-                {{ p.member?.prenom }} {{ p.member?.nom }}
-              </p>
-              <p class="text-xs text-(--ui-text-muted)">{{ p.datePaiement }} — {{ p.moyenPaiement }}</p>
-            </div>
-            <span class="font-semibold text-emerald-500">
-              {{ p.montant.toLocaleString('fr-FR') }} GNF
-            </span>
-          </div>
-          <p v-if="!recentPayments?.items?.length" class="py-4 text-center text-sm text-(--ui-text-muted)">
-            Aucun paiement récent
-          </p>
+        <div class="h-64">
+          <Bar :data="barChartData" :options="barChartOptions" />
         </div>
-      </UCard>
+      </div>
+
+      <!-- Doughnut Chart — Répartition membres -->
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Répartition des membres</h3>
+        </div>
+        <div class="h-64">
+          <Doughnut :data="doughnutData" :options="doughnutOptions" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Gradient Card -->
+    <div class="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl p-6 shadow-lg text-white">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+        <div>
+          <p class="text-sm text-blue-100 font-medium">Taux de participation</p>
+          <p class="text-3xl font-bold mt-1">{{ participationRate }}%</p>
+          <p class="text-xs text-blue-200 mt-1">{{ totalActive }} / {{ totalMembers }} membres</p>
+        </div>
+        <div>
+          <p class="text-sm text-blue-100 font-medium">Frais de paiement</p>
+          <p class="text-3xl font-bold mt-1">{{ totalFrais.toLocaleString('fr-FR') }}</p>
+          <p class="text-xs text-blue-200 mt-1">GNF collectés en frais</p>
+        </div>
+        <div>
+          <p class="text-sm text-blue-100 font-medium">Nombre de paiements</p>
+          <p class="text-3xl font-bold mt-1">{{ allPayments?.totalCount || 0 }}</p>
+          <p class="text-xs text-blue-200 mt-1">paiements enregistrés</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Payments -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900">Derniers paiements</h3>
+        <NuxtLink to="/payments" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+          Voir tout
+          <UIcon name="i-lucide-arrow-right" class="w-4 h-4" />
+        </NuxtLink>
+      </div>
+      <div class="divide-y divide-gray-100">
+        <div
+          v-for="p in recentPayments?.items"
+          :key="p.id"
+          class="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div>
+            <p class="text-sm font-medium text-gray-900">
+              {{ p.member?.prenom }} {{ p.member?.nom }}
+            </p>
+            <p class="text-xs text-gray-500">{{ p.datePaiement }} — {{ p.moyenPaiement }}</p>
+          </div>
+          <span class="text-sm font-bold text-green-600">
+            {{ p.montant.toLocaleString('fr-FR') }} GNF
+          </span>
+        </div>
+        <div v-if="!recentPayments?.items?.length" class="px-6 py-8 text-center text-sm text-gray-500">
+          Aucun paiement récent
+        </div>
+      </div>
     </div>
   </div>
 </template>
