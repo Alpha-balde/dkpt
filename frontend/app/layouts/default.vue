@@ -8,67 +8,45 @@ const isDark = computed({
   set: (v) => { colorMode.preference = v ? 'dark' : 'light' }
 })
 
+// Initiales 2 lettres pour l'avatar
+const initials = computed(() => {
+  if (!user.value?.email) return '??'
+  const parts = user.value.email.split('@')[0].split(/[._-]/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return user.value.email.substring(0, 2).toUpperCase()
+})
+
 const navigationItems = computed(() => {
   const items = [
-    {
-      label: 'Tableau de bord',
-      icon: 'i-lucide-layout-dashboard',
-      to: '/dashboard'
-    },
-    {
-      label: 'Membres',
-      icon: 'i-lucide-users',
-      to: '/members'
-    },
-    {
-      label: 'Paiements',
-      icon: 'i-lucide-credit-card',
-      to: '/payments'
-    },
-    {
-      label: 'Cotisations',
-      icon: 'i-lucide-bar-chart-3',
-      to: '/cotisations'
-    },
-    {
-      label: 'Arriérés',
-      icon: 'i-lucide-alert-triangle',
-      to: '/arrieres'
-    }
+    { label: 'Tableau de bord', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
+    { label: 'Membres', icon: 'i-lucide-users', to: '/members' },
+    { label: 'Cotisations', icon: 'i-lucide-wallet', to: '/cotisations' },
+    { label: 'Paiements', icon: 'i-lucide-credit-card', to: '/payments' },
+    { label: 'Arriérés', icon: 'i-lucide-alert-circle', to: '/arrieres' }
   ]
 
   if (isAdmin.value) {
     items.push(
-      {
-        label: 'Utilisateurs',
-        icon: 'i-lucide-shield',
-        to: '/users'
-      },
-      {
-        label: 'Paramètres',
-        icon: 'i-lucide-settings',
-        to: '/settings'
-      }
+      { label: 'Utilisateurs', icon: 'i-lucide-user-cog', to: '/users' },
+      { label: 'Paramètres', icon: 'i-lucide-settings', to: '/settings' }
     )
   }
 
   return items
 })
+
+// Mobile menu
+const mobileMenuOpen = ref(false)
 </script>
 
 <template>
-  <div class="flex h-screen">
-    <!-- Sidebar -->
-    <aside class="hidden lg:flex flex-col w-64 border-r border-(--ui-border) bg-(--ui-bg-elevated)">
+  <div class="flex h-screen bg-gray-50">
+    <!-- Desktop Sidebar -->
+    <aside class="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed top-0 left-0 h-screen z-30">
       <!-- Logo -->
-      <div class="flex items-center gap-3 px-6 py-5 border-b border-(--ui-border)">
-        <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-(--ui-primary) text-white font-bold text-sm">
-          DK
-        </div>
-        <div>
-          <h1 class="text-sm font-semibold text-(--ui-text-highlighted)">DKPT</h1>
-          <p class="text-xs text-(--ui-text-muted)">Gestion Association</p>
-        </div>
+      <div class="px-6 py-5 border-b border-gray-100">
+        <h1 class="text-2xl font-bold text-blue-600">DKPT</h1>
+        <p class="text-xs text-gray-500">Gestion Association</p>
       </div>
 
       <!-- Navigation -->
@@ -79,67 +57,129 @@ const navigationItems = computed(() => {
           :to="item.to"
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
           :class="route.path.startsWith(item.to)
-            ? 'bg-(--ui-primary)/10 text-(--ui-primary)'
-            : 'text-(--ui-text-muted) hover:text-(--ui-text-highlighted) hover:bg-(--ui-bg-accented)'"
+            ? 'bg-blue-50 text-blue-700'
+            : 'text-gray-700 hover:bg-gray-100'"
         >
           <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
           {{ item.label }}
         </NuxtLink>
       </nav>
 
-      <!-- Footer -->
-      <div class="px-4 py-4 border-t border-(--ui-border) space-y-3">
+      <!-- Footer: User + Logout -->
+      <div class="px-4 py-4 border-t border-gray-100 space-y-3">
         <div class="flex items-center justify-between">
-          <span class="text-xs text-(--ui-text-muted)">Thème</span>
+          <span class="text-xs text-gray-500">Thème</span>
           <USwitch v-model="isDark" size="sm" />
         </div>
         <div class="flex items-center gap-3">
-          <UAvatar :text="user?.email?.charAt(0).toUpperCase()" size="sm" />
-          <div class="flex-1 min-w-0">
-            <p class="text-xs font-medium text-(--ui-text-highlighted) truncate">{{ user?.email }}</p>
-            <p class="text-xs text-(--ui-text-muted)">{{ user?.role }}</p>
+          <div class="flex items-center justify-center h-9 w-9 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold shrink-0">
+            {{ initials }}
           </div>
-          <UButton icon="i-lucide-log-out" color="neutral" variant="ghost" size="xs" @click="logout" />
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">{{ user?.email }}</p>
+            <p class="text-xs text-gray-500">{{ user?.role }}</p>
+          </div>
         </div>
+        <button
+          class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          @click="logout"
+        >
+          <UIcon name="i-lucide-log-out" class="w-4 h-4" />
+          Déconnexion
+        </button>
       </div>
     </aside>
 
-    <!-- Mobile header + content -->
-    <div class="flex-1 flex flex-col min-w-0">
-      <!-- Mobile header -->
-      <header class="lg:hidden flex items-center justify-between px-4 py-3 border-b border-(--ui-border) bg-(--ui-bg-elevated)">
-        <div class="flex items-center gap-2">
-          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-(--ui-primary) text-white font-bold text-xs">
-            DK
+    <!-- Mobile overlay -->
+    <Transition name="fade">
+      <div
+        v-if="mobileMenuOpen"
+        class="lg:hidden fixed inset-0 bg-black/50 z-40"
+        @click="mobileMenuOpen = false"
+      />
+    </Transition>
+
+    <!-- Mobile sidebar slide-in -->
+    <Transition name="slide">
+      <aside
+        v-if="mobileMenuOpen"
+        class="lg:hidden fixed top-0 left-0 h-screen w-64 bg-white z-50 shadow-xl"
+      >
+        <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-blue-600">DKPT</h1>
+            <p class="text-xs text-gray-500">Gestion Association</p>
           </div>
-          <span class="text-sm font-semibold">DKPT</span>
+          <button class="p-1" @click="mobileMenuOpen = false">
+            <UIcon name="i-lucide-x" class="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+        <nav class="px-3 py-4 space-y-1">
+          <NuxtLink
+            v-for="item in navigationItems"
+            :key="item.to"
+            :to="item.to"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            :class="route.path.startsWith(item.to)
+              ? 'bg-blue-50 text-blue-700'
+              : 'text-gray-700 hover:bg-gray-100'"
+            @click="mobileMenuOpen = false"
+          >
+            <UIcon :name="item.icon" class="w-5 h-5 shrink-0" />
+            {{ item.label }}
+          </NuxtLink>
+        </nav>
+        <div class="absolute bottom-0 left-0 right-0 px-4 py-4 border-t border-gray-100">
+          <button
+            class="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            @click="logout"
+          >
+            <UIcon name="i-lucide-log-out" class="w-4 h-4" />
+            Déconnexion
+          </button>
+        </div>
+      </aside>
+    </Transition>
+
+    <!-- Main content -->
+    <div class="flex-1 flex flex-col min-w-0 lg:ml-64">
+      <!-- Mobile header -->
+      <header class="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div class="flex items-center gap-3">
+          <button @click="mobileMenuOpen = true">
+            <UIcon name="i-lucide-menu" class="w-6 h-6 text-gray-700" />
+          </button>
+          <span class="text-lg font-bold text-blue-600">DKPT</span>
         </div>
         <div class="flex items-center gap-2">
           <USwitch v-model="isDark" size="sm" />
-          <UButton icon="i-lucide-log-out" color="neutral" variant="ghost" size="xs" @click="logout" />
+          <div class="flex items-center justify-center h-8 w-8 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+            {{ initials }}
+          </div>
         </div>
       </header>
 
       <!-- Page content -->
-      <main class="flex-1 overflow-y-auto p-4 lg:p-8">
-        <slot />
+      <main class="flex-1 overflow-y-auto">
+        <div class="max-w-7xl mx-auto p-4 md:p-8">
+          <slot />
+        </div>
       </main>
-
-      <!-- Mobile bottom nav -->
-      <nav class="lg:hidden flex items-center justify-around border-t border-(--ui-border) bg-(--ui-bg-elevated) py-2">
-        <NuxtLink
-          v-for="item in navigationItems.slice(0, 5)"
-          :key="item.to"
-          :to="item.to"
-          class="flex flex-col items-center gap-1 px-3 py-1"
-          :class="route.path.startsWith(item.to)
-            ? 'text-(--ui-primary)'
-            : 'text-(--ui-text-muted)'"
-        >
-          <UIcon :name="item.icon" class="w-5 h-5" />
-          <span class="text-[10px]">{{ item.label.split(' ')[0] }}</span>
-        </NuxtLink>
-      </nav>
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+.slide-enter-active, .slide-leave-active {
+  transition: transform 0.3s ease;
+}
+.slide-enter-from, .slide-leave-to {
+  transform: translateX(-100%);
+}
+</style>

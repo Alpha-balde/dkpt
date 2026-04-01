@@ -2,5 +2,5 @@
 @import "@nuxt/ui";
 
 @theme static {
-  --font-sans: 'Inter', 'Public Sans', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
