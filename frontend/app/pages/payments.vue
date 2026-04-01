@@ -248,11 +248,11 @@ onMounted(() => {
       </UButton>
     </div>
 
-    <!-- Filters with labels -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Année</label>
+    <!-- Filters -->
+    <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+      <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div>
+          <label class="text-sm font-medium text-gray-700 mb-2 block">Année</label>
           <USelect
             v-model="yearFilter"
             :items="yearItems"
@@ -261,16 +261,16 @@ onMounted(() => {
             @update:model-value="onFilterChange"
           />
         </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Moyen de paiement</label>
+        <div>
+          <label class="text-sm font-medium text-gray-700 mb-2 block">Moyen de paiement</label>
           <USelect
             v-model="methodFilter"
             :items="methodItems"
             @update:model-value="onFilterChange"
           />
         </div>
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-gray-700">Recherche (Membre ou Réf)</label>
+        <div class="lg:col-span-2">
+          <label class="text-sm font-medium text-gray-700 mb-2 block">Recherche (Membre ou Réf)</label>
           <UInput
             v-model="search"
             placeholder="Nom, Numéro membre..."
