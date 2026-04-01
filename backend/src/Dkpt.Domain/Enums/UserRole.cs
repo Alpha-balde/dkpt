@@ -2,8 +2,8 @@ namespace Dkpt.Domain.Enums;
 
 public enum UserRole
 {
-    Admin,
+    Lecteur,
     Secretaire,
     Tresorier,
-    Lecteur
+    Admin
 }
