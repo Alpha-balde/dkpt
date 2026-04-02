@@ -13,8 +13,8 @@ COPY src/Dkpt.Application/Dkpt.Application.csproj src/Dkpt.Application/
 COPY src/Dkpt.Infrastructure/Dkpt.Infrastructure.csproj src/Dkpt.Infrastructure/
 COPY src/Dkpt.Api/Dkpt.Api.csproj src/Dkpt.Api/
 
-# Restore dependencies
-RUN dotnet restore Dkpt.sln
+# Restore dependencies (API project only, not tests)
+RUN dotnet restore src/Dkpt.Api/Dkpt.Api.csproj
 
 # Copy everything else and publish
 COPY . .
