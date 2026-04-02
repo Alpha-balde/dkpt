@@ -196,8 +196,24 @@ function onFilterChange() {
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex justify-center">
-      <UPagination v-model="page" :total="data?.totalCount || 0" :items-per-page="pageSize" />
+    <div v-if="totalPages > 1" class="flex justify-center items-center gap-2">
+      <UButton
+        variant="outline"
+        color="neutral"
+        label="‹"
+        square
+        :disabled="page <= 1"
+        @click="page = Math.max(1, page - 1)"
+      />
+      <UPagination v-model:page="page" :total="data?.totalCount || 0" :items-per-page="pageSize" :show-controls="false" />
+      <UButton
+        variant="outline"
+        color="neutral"
+        label="›"
+        square
+        :disabled="page >= totalPages"
+        @click="page = Math.min(totalPages, page + 1)"
+      />
     </div>
   </div>
 </template>
