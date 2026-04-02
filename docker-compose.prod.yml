@@ -1,0 +1,112 @@
+# ============================================
+# DKPT — Docker Compose Production
+# ============================================
+# Utilise les images Docker Hub (pas de build local)
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml down
+# ============================================
+
+services:
+  # ---- PostgreSQL 16 ----
+  db:
+    image: postgres:16-alpine
+    container_name: dkpt-db-prod
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - dkpt-pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - dkpt-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ---- Backend (image Docker Hub) ----
+  backend:
+    image: alphab224/dkpt-backend:latest
+    container_name: dkpt-backend-prod
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ConnectionStrings__DefaultConnection: ${ConnectionStrings__DefaultConnection}
+      Jwt__SecretKey: ${Jwt__SecretKey}
+      Jwt__Issuer: ${Jwt__Issuer}
+      Jwt__Audience: ${Jwt__Audience}
+      Cors__Origins: ${Cors__Origins}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - dkpt-net
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080' 2>/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+
+  # ---- Frontend (image Docker Hub) ----
+  frontend:
+    image: alphab224/dkpt-frontend:latest
+    container_name: dkpt-frontend-prod
+    environment:
+      NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE}
+      NUXT_API_BASE_INTERNAL: ${NUXT_API_BASE_INTERNAL}
+    depends_on:
+      - backend
+    networks:
+      - dkpt-net
+    restart: unless-stopped
+
+  # ---- Nginx Reverse Proxy ----
+  nginx:
+    image: nginx:alpine
+    container_name: dkpt-nginx-prod
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - dkpt-net
+    restart: unless-stopped
+
+  # ---- Seed Data (one-shot, profil optionnel) ----
+  seed:
+    image: postgres:16-alpine
+    container_name: dkpt-seed-prod
+    profiles: [seed]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./docker/seed:/seed:ro
+      - ../docs/dkpt_sql:/data:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    entrypoint: ["sh", "/seed/run-seed.sh"]
+    networks:
+      - dkpt-net
+    restart: "no"
+
+volumes:
+  dkpt-pgdata:
+    name: dkpt-pgdata-prod
+
+networks:
+  dkpt-net:
+    name: dkpt-net-prod
+    driver: bridge
