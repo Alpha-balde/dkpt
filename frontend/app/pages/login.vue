@@ -9,6 +9,7 @@ const state = reactive({
   password: ''
 })
 const loading = ref(false)
+const currentYear = new Date().getFullYear()
 
 async function onSubmit() {
   loading.value = true
@@ -29,71 +30,69 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-blue-50 to-indigo-100">
-    <div class="w-full max-w-md">
-      <!-- Login Card -->
-      <div class="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-        <!-- Logo -->
-        <div class="text-center space-y-3">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100">
-            <UIcon name="i-lucide-shield-check" class="w-8 h-8 text-blue-600" />
-          </div>
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">DKPT</h1>
-            <p class="text-sm text-gray-500">Diiwal Koïn Préfecture Tougué</p>
-          </div>
+  <div class="min-h-screen grid place-items-center px-4 py-8 bg-gradient-to-b from-slate-100 via-blue-50 to-indigo-100">
+    <div class="w-full max-w-md space-y-5">
+      <div class="text-center space-y-3">
+        <div class="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 ring-1 ring-blue-200 shadow-inner">
+          <UIcon name="i-lucide-shield-check" class="w-8 h-8 text-blue-600" />
         </div>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight text-gray-900">DKPT</h1>
+          <p class="mt-1 text-sm text-gray-600">Diiwal Koïn Préfecture Tougué</p>
+        </div>
+      </div>
 
-        <!-- Separator -->
-        <div class="border-t border-gray-100" />
+      <UCard class="rounded-2xl shadow-xl ring-1 ring-gray-200/80">
+        <template #header>
+          <div class="text-center">
+            <h2 class="text-lg font-semibold text-gray-900">Connexion</h2>
+            <p class="mt-1 text-xs text-gray-500">Accedez a votre espace DKPT</p>
+          </div>
+        </template>
 
-        <!-- Form -->
         <form class="space-y-4" @submit.prevent="onSubmit">
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">Email</label>
+          <UFormField label="Email" required>
             <UInput
               v-model="state.email"
               type="email"
               placeholder="admin@dkpt.com"
               icon="i-lucide-mail"
               size="lg"
+              autocomplete="email"
+              class="w-full"
               required
               autofocus
             />
-          </div>
+          </UFormField>
 
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-gray-700">Mot de passe</label>
+          <UFormField label="Mot de passe" required>
             <UInput
               v-model="state.password"
               type="password"
-              placeholder="••••••••"
+              placeholder="********"
               icon="i-lucide-lock"
               size="lg"
+              autocomplete="current-password"
+              class="w-full"
               required
             />
-          </div>
+          </UFormField>
 
           <UButton
             type="submit"
             block
             size="lg"
+            icon="i-lucide-log-in"
             :loading="loading"
-            class="bg-blue-600 hover:bg-blue-700 mt-2"
+            class="mt-2 bg-blue-600 hover:bg-blue-700"
           >
-            <template v-if="loading">
-              Connexion...
-            </template>
-            <template v-else>
-              Se connecter
-            </template>
+            {{ loading ? 'Connexion...' : 'Se connecter' }}
           </UButton>
         </form>
-      </div>
+      </UCard>
 
-      <!-- Footer -->
-      <p class="text-center text-xs text-gray-400 mt-6">
-        © {{ new Date().getFullYear() }} DKPT — Gestion des cotisations
+      <p class="text-center text-xs text-gray-500">
+        © {{ currentYear }} DKPT — Gestion des cotisations
       </p>
     </div>
   </div>
