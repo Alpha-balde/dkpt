@@ -1,0 +1,77 @@
+# ============================================
+# DKPT — Variante 2 : Single Job
+# ============================================
+# Fusionne backend et frontend dans un seul job
+# avec toutes les steps séquentielles.
+#
+# Comparaison avec ci.yml (référence) :
+#   - ci.yml : 1 job (backend puis frontend, séquentiel)
+#   - ici   : identique en structure, mais montre que tout
+#             tient dans un seul job sans séparation.
+#
+# Avantages :
+#   - 1 seul runner → pas de temps de démarrage supplémentaire
+#   - 1 seul checkout → filesystem partagé entre toutes les steps
+#   - Vue simplifiée dans l'interface GitHub Actions
+#
+# Inconvénients :
+#   - Pas de parallélisation possible (steps toujours séquentielles)
+#   - Pas de re-run partiel (tout ou rien)
+#   - Si le backend échoue, le frontend ne sera pas testé
+#   - Moins de granularité dans les rapports
+# ============================================
+
+name: "Variante 2 — Single Job"
+
+on:
+  workflow_dispatch:  # Déclenchement manuel uniquement
+
+env:
+  DOTNET_VERSION: "9.0.x"
+  NODE_VERSION: "20"
+
+jobs:
+  # ============================================
+  # Job unique — Build & Test (tout en un)
+  # ============================================
+  ci:
+    name: "CI — Build & Test (all-in-one)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ---- Backend (.NET 9) ----
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore backend dependencies
+        run: dotnet restore
+        working-directory: backend
+
+      - name: Build backend
+        run: dotnet build --no-restore --configuration Release
+        working-directory: backend
+
+      - name: Run backend tests
+        run: dotnet test --no-build --configuration Release --verbosity minimal
+        working-directory: backend
+
+      # ---- Frontend (Nuxt 4) ----
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
