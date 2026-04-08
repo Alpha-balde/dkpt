@@ -1,0 +1,92 @@
+# ============================================
+# DKPT — Variante 4 : Matrix Strategy
+# ============================================
+# Utilise la matrix strategy pour tester le build
+# sur plusieurs OS et versions de runtime.
+#
+# Comparaison avec ci.yml (référence) :
+#   - ci.yml : 1 seul runner (ubuntu-latest, .NET 9, Node 20)
+#   - ici   : matrix de combinaisons OS × version
+#
+# Avantages :
+#   - Vérifie la portabilité de l'application
+#   - Détecte les bugs spécifiques à un OS ou une version
+#   - Tous les jobs de la matrice s'exécutent en parallèle
+#
+# Inconvénients :
+#   - Consomme plus de minutes GitHub Actions (multiplicateur)
+#   - Temps total plus long (attente du job le plus lent)
+#   - Pertinence limitée si le déploiement cible toujours Linux/Docker
+# ============================================
+
+name: "Variante 4 — Matrix Strategy"
+
+on:
+  workflow_dispatch:  # Déclenchement manuel uniquement
+
+jobs:
+  # ============================================
+  # Job 1 — Backend : matrice OS × .NET version
+  # ============================================
+  test-backend:
+    name: "Backend — ${{ matrix.os }} / .NET ${{ matrix.dotnet }}"
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dotnet: ["8.0.x", "9.0.x"]
+      fail-fast: false  # Continue les autres combinaisons même si une échoue
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ matrix.dotnet }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: backend
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+        working-directory: backend
+
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release --verbosity minimal
+        working-directory: backend
+
+  # ============================================
+  # Job 2 — Frontend : matrice OS × Node version
+  # ============================================
+  test-frontend:
+    name: "Frontend — ${{ matrix.os }} / Node ${{ matrix.node }}"
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["18", "20", "22"]
+      fail-fast: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
