@@ -14,6 +14,8 @@
 name: DKPT CI
 
 on:
+  workflow_dispatch:
+
   push:
     branches: [main, develop]
     paths-ignore:
