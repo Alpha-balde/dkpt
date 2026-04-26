@@ -77,6 +77,13 @@ definitions:
         name: 'Deploy to Staging'
         deployment: staging
         script:
+          # Préparer le dossier de déploiement
+          - pipe: atlassian/ssh-run:0.8.1
+            variables:
+              SSH_USER: $VPS_STAGING_USER
+              SERVER: $VPS_STAGING_HOST
+              SSH_KEY: $VPS_STAGING_SSH_KEY
+              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
           # Copier les fichiers d'infrastructure sur le VPS
           - pipe: atlassian/scp-deploy:1.4.0
             variables:
@@ -110,6 +117,13 @@ definitions:
         deployment: production
         trigger: manual  # Approbation manuelle pour la production
         script:
+          # Préparer le dossier de déploiement
+          - pipe: atlassian/ssh-run:0.8.1
+            variables:
+              SSH_USER: $VPS_USER
+              SERVER: $VPS_HOST
+              SSH_KEY: $VPS_SSH_KEY
+              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
           # Copier les fichiers d'infrastructure sur le VPS
           - pipe: atlassian/scp-deploy:1.4.0
             variables:
