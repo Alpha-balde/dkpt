@@ -1,0 +1,23 @@
+# ============================================
+# DKPT — Azure DevOps : Template Build Nuxt
+# ============================================
+# Morceau réutilisable pour build du frontend Nuxt 4
+# Utilisé par : ci.yml, pr-check.yml
+#
+# Spécificité Azure DevOps : les templates permettent de
+# factoriser les steps communes entre plusieurs pipelines.
+# ============================================
+
+steps:
+  - task: NodeTool@0
+    displayName: 'Setup Node.js 20'
+    inputs:
+      versionSpec: '20.x'
+
+  - script: npm ci
+    displayName: 'Install dependencies'
+    workingDirectory: frontend
+
+  - script: npm run build
+    displayName: 'Build frontend'
+    workingDirectory: frontend

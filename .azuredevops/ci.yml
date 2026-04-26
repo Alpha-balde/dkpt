@@ -1,0 +1,48 @@
+# ============================================
+# DKPT — Azure DevOps : Pipeline CI
+# ============================================
+# Build & Test du backend (.NET 9) et du frontend (Nuxt 4)
+# Déclenché sur push vers main ou develop
+#
+# Note : Ce fichier doit être enregistré manuellement dans l'UI
+# Azure DevOps comme un pipeline distinct.
+#
+# Équivalent de : .github/workflows/ci.yml
+# Comparaison : voir docs/ci-comparison/azure-devops.md
+# ============================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    exclude:
+      - README.md
+      - docs/**
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  dotnetVersion: '9.0.x'
+  nodeVersion: '20'
+
+stages:
+  # ============================================
+  # Stage — Build & Test
+  # ============================================
+  - stage: BuildTest
+    displayName: 'Build & Test'
+    jobs:
+      # ---- Backend (.NET 9) ----
+      - job: BackendTest
+        displayName: 'Backend — Build & Test'
+        steps:
+          - template: templates/build-dotnet.yml
+
+      # ---- Frontend (Nuxt 4) ----
+      - job: FrontendBuild
+        displayName: 'Frontend — Build'
+        steps:
+          - template: templates/build-nuxt.yml

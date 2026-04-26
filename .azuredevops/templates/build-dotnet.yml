@@ -1,0 +1,29 @@
+# ============================================
+# DKPT — Azure DevOps : Template Build .NET
+# ============================================
+# Morceau réutilisable pour build & test du backend .NET 9
+# Utilisé par : ci.yml, pr-check.yml
+#
+# Spécificité Azure DevOps : les templates permettent de
+# factoriser les steps communes entre plusieurs pipelines.
+# C'est l'équivalent des "reusable workflows" de GitHub Actions
+# ou des "include:" de GitLab CI.
+# ============================================
+
+steps:
+  - task: UseDotNet@2
+    displayName: 'Setup .NET 9'
+    inputs:
+      version: '9.0.x'
+
+  - script: dotnet restore
+    displayName: 'Restore dependencies'
+    workingDirectory: backend
+
+  - script: dotnet build --no-restore --configuration Release
+    displayName: 'Build backend'
+    workingDirectory: backend
+
+  - script: dotnet test --no-build --configuration Release --verbosity minimal
+    displayName: 'Run tests'
+    workingDirectory: backend

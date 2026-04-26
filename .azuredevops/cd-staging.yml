@@ -1,0 +1,81 @@
+# ============================================
+# DKPT — Azure DevOps : Pipeline CD Staging
+# ============================================
+# Docker build & push (tag :staging) + deploy sur VPS staging
+# Déclenché après succès du pipeline CI sur develop
+#
+# Équivalent de : .github/workflows/cd-staging.yml
+# ============================================
+
+trigger: none  # Pas de trigger direct, déclenché par pipeline resource
+
+resources:
+  pipelines:
+    - pipeline: ci
+      source: 'DKPT CI'  # Nom du pipeline CI enregistré dans l'UI
+      trigger:
+        branches:
+          include:
+            - develop
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  dockerBackendImage: '$(DOCKERHUB_USERNAME)/dkpt-backend'
+  dockerFrontendImage: '$(DOCKERHUB_USERNAME)/dkpt-frontend'
+
+stages:
+  # ============================================
+  # Stage 1 — Docker Build & Push
+  # ============================================
+  - stage: Docker
+    displayName: 'Docker Build & Push (Staging)'
+    jobs:
+      - job: BuildPush
+        displayName: 'Build & Push Images'
+        steps:
+          - task: Docker@2
+            displayName: 'Login to Docker Hub'
+            inputs:
+              containerRegistry: 'dockerhub-connection'
+              command: 'login'
+
+          - script: |
+              docker build -t $(dockerBackendImage):staging -t $(dockerBackendImage):staging-$(Build.SourceVersion) ./backend
+              docker push $(dockerBackendImage):staging
+              docker push $(dockerBackendImage):staging-$(Build.SourceVersion)
+            displayName: 'Build & Push Backend'
+
+          - script: |
+              docker build -t $(dockerFrontendImage):staging -t $(dockerFrontendImage):staging-$(Build.SourceVersion) ./frontend
+              docker push $(dockerFrontendImage):staging
+              docker push $(dockerFrontendImage):staging-$(Build.SourceVersion)
+            displayName: 'Build & Push Frontend'
+
+  # ============================================
+  # Stage 2 — Deploy to Staging
+  # ============================================
+  - stage: DeployStaging
+    displayName: 'Deploy to Staging'
+    dependsOn: Docker
+    jobs:
+      - deployment: DeployVPS
+        displayName: 'Deploy to Staging VPS'
+        environment: 'staging'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: SSH@0
+                  displayName: 'Deploy via SSH'
+                  inputs:
+                    sshEndpoint: 'vps-staging-ssh'
+                    runOptions: 'inline'
+                    inline: |
+                      cd /opt/dkpt
+                      export TAG=staging
+                      docker compose pull
+                      docker compose up -d --remove-orphans
+                      docker image prune -f
+                      echo "✅ Staging deploy complete!"
