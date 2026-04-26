@@ -1,0 +1,92 @@
+# ============================================
+# DKPT — Azure DevOps : Pipeline CD Production
+# ============================================
+# Docker build & push (tag :latest) + deploy sur VPS production
+# Déclenché après succès du pipeline CI sur main
+#
+# Équivalent de : .github/workflows/cd-prod.yml
+# ============================================
+
+trigger: none
+
+resources:
+  pipelines:
+    - pipeline: ci
+      source: 'DKPT CI'
+      trigger:
+        branches:
+          include:
+            - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  dockerBackendImage: '$(DOCKERHUB_USERNAME)/dkpt-backend'
+  dockerFrontendImage: '$(DOCKERHUB_USERNAME)/dkpt-frontend'
+
+stages:
+  # ============================================
+  # Stage 1 — Docker Build & Push
+  # ============================================
+  - stage: Docker
+    displayName: 'Docker Build & Push (Production)'
+    jobs:
+      - job: BuildPush
+        displayName: 'Build & Push Images'
+        steps:
+          - task: Docker@2
+            displayName: 'Login to Docker Hub'
+            inputs:
+              containerRegistry: 'dockerhub-connection'
+              command: 'login'
+
+          - script: |
+              docker build -t $(dockerBackendImage):latest -t $(dockerBackendImage):$(Build.SourceVersion) ./backend
+              docker push $(dockerBackendImage):latest
+              docker push $(dockerBackendImage):$(Build.SourceVersion)
+            displayName: 'Build & Push Backend'
+
+          - script: |
+              docker build -t $(dockerFrontendImage):latest -t $(dockerFrontendImage):$(Build.SourceVersion) ./frontend
+              docker push $(dockerFrontendImage):latest
+              docker push $(dockerFrontendImage):$(Build.SourceVersion)
+            displayName: 'Build & Push Frontend'
+
+  # ============================================
+  # Stage 2 — Deploy to Production
+  # ============================================
+  - stage: DeployProd
+    displayName: 'Deploy to Production'
+    dependsOn: Docker
+    jobs:
+      - deployment: DeployVPS
+        displayName: 'Deploy to Production VPS'
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: CopyFilesOverSSH@0
+                  displayName: 'Copy infrastructure files to VPS'
+                  inputs:
+                    sshEndpoint: 'vps-prod-ssh'
+                    sourceFolder: '$(Build.SourcesDirectory)'
+                    contents: |
+                      docker-compose.prod.yml
+                      nginx/nginx.conf
+                    targetFolder: '/opt/dkpt'
+
+                - task: SSH@0
+                  displayName: 'Deploy via SSH'
+                  inputs:
+                    sshEndpoint: 'vps-prod-ssh'
+                    runOptions: 'inline'
+                    inline: |
+                      cd /opt/dkpt
+                      docker compose -f docker-compose.prod.yml pull
+                      docker compose -f docker-compose.prod.yml up -d --remove-orphans
+                      docker image prune -f
+                      echo "✅ Production deploy complete!"

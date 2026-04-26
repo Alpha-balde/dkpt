@@ -1,0 +1,39 @@
+# ============================================
+# DKPT — Azure DevOps : Pipeline PR Check
+# ============================================
+# Vérification des Pull Requests (build + test, sans deploy)
+# Déclenché automatiquement sur PR vers main ou develop
+#
+# Équivalent de : .github/workflows/pr-check.yml
+# ============================================
+
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    exclude:
+      - README.md
+      - docs/**
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: PRCheck
+    displayName: 'PR Verification'
+    jobs:
+      # ---- Backend Check ----
+      - job: BackendCheck
+        displayName: 'Backend — Build & Test'
+        steps:
+          - template: templates/build-dotnet.yml
+
+      # ---- Frontend Check ----
+      - job: FrontendCheck
+        displayName: 'Frontend — Build'
+        steps:
+          - template: templates/build-nuxt.yml

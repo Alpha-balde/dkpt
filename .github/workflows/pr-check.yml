@@ -1,24 +1,16 @@
 # ============================================
-# DKPT — Pipeline CI (Intégration Continue)
+# DKPT — Pipeline PR Check (GitHub Actions)
 # ============================================
-# Déclenché sur push vers main ou develop
-# Job : build-and-test (backend .NET + frontend Nuxt)
-# Le déploiement est géré par cd-staging.yml et cd-prod.yml
+# Déclenché sur les Pull Requests vers main ou develop
+# Job : vérification rapide (build + test, sans deploy)
 #
 # Plateforme : GitHub Actions
-# Équivalents : .gitlab/pipelines/ci.yml, .azuredevops/ci.yml,
-#               bitbucket-pipelines.yml (section default)
 # Comparaison : voir docs/ci-comparison/github-actions.md
 # ============================================
 
-name: DKPT CI
+name: DKPT PR Check
 
 on:
-  push:
-    branches: [main, develop]
-    paths-ignore:
-      - "README.md"
-      - "docs/**"
   pull_request:
     branches: [main, develop]
     paths-ignore:
@@ -31,35 +23,44 @@ env:
 
 jobs:
   # ============================================
-  # Job — Build & Test
+  # Job 1 — Backend Check
   # ============================================
-  build-and-test:
-    name: Build & Test
+  check-backend:
+    name: "Backend — Build & Test"
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ---- Backend (.NET 9) ----
       - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore backend dependencies
+      - name: Restore dependencies
         run: dotnet restore
         working-directory: backend
 
-      - name: Build backend
+      - name: Build
         run: dotnet build --no-restore --configuration Release
         working-directory: backend
 
-      - name: Run backend tests
+      - name: Run tests
         run: dotnet test --no-build --configuration Release --verbosity minimal
         working-directory: backend
 
-      # ---- Frontend (Nuxt 4) ----
+  # ============================================
+  # Job 2 — Frontend Check
+  # ============================================
+  check-frontend:
+    name: "Frontend — Build"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
@@ -67,11 +68,10 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: npm ci
         working-directory: frontend
 
-      - name: Build frontend
+      - name: Build
         run: npm run build
         working-directory: frontend
-

@@ -14,7 +14,7 @@ Application de gestion des cotisations et des membres de l'association DKPT.
 | **Auth** | JWT custom (BCrypt) |
 | **API Docs** | Swagger / OpenAPI |
 | **Infrastructure** | Docker Compose, Nginx reverse proxy |
-| **CI/CD** | GitHub Actions → Docker Hub → VPS (SSH) |
+| **CI/CD** | GitHub Actions, GitLab CI, Azure DevOps, Bitbucket Pipelines |
 | **Production** | Oracle Cloud VPS (Ubuntu 22.04) |
 
 ## Prérequis
@@ -101,49 +101,49 @@ docker compose down -v
 
 ---
 
-## CI/CD Pipeline (GitHub Actions)
+## CI/CD Multi-Plateformes
 
-Chaque push sur `main` déclenche automatiquement le pipeline :
+Le projet implémente le même pipeline CI/CD sur **4 plateformes** pour comparaison dans le mémoire :
 
 ```
-git push → Build & Test → Docker Build & Push → Deploy to VPS
-              (1m16s)         (2m42s)              (9s)
+GitHub (source de vérité)
+    ├── miroir → GitLab      (.gitlab-ci.yml + .gitlab/pipelines/)
+    ├── miroir → Bitbucket   (bitbucket-pipelines.yml)
+    └── miroir → Azure Repos (.azuredevops/)
 ```
 
-### Jobs du pipeline
+### Pipelines par plateforme
 
-| Job | Détails |
-|-----|---------|
-| **Build & Test** | `dotnet build` + 9 tests xUnit + `npm run build` |
-| **Docker Build & Push** | Build images multi-stage → push sur Docker Hub |
-| **Deploy to VPS** | SSH → `docker compose pull` + `up -d` |
+| Pipeline | GitHub Actions | GitLab CI | Azure DevOps | Bitbucket |
+|----------|:-:|:-:|:-:|:-:|
+| **CI** | `ci.yml` | `pipelines/ci.yml` | `ci.yml` | section `default` |
+| **CD Staging** | `cd-staging.yml` | `pipelines/cd-staging.yml` | `cd-staging.yml` | section `branches: develop` |
+| **CD Production** | `cd-prod.yml` | `pipelines/cd-prod.yml` | `cd-prod.yml` | section `branches: main` |
+| **PR Check** | `pr-check.yml` | `pipelines/pr-check.yml` | `pr-check.yml` | section `pull-requests` |
+| **Mirror** | `mirror.yml` | — | — | — |
 
-### Secrets requis (GitHub → Settings → Secrets)
+### Variantes GitHub Actions (comparaison intra-plateforme)
+
+| Variante | Fichier | Description |
+|----------|---------|-------------|
+| Parallel | `variante-1-parallel.yml` | Backend et frontend en 2 jobs parallèles |
+| Single Job | `variante-2-single-job.yml` | Tout dans 1 seul job séquentiel |
+| Matrix | `variante-4-matrix.yml` | Test sur multiples OS × versions runtime |
+
+### Secrets requis (par plateforme)
 
 | Secret | Description |
 |--------|------------|
 | `DOCKERHUB_USERNAME` | Username Docker Hub |
 | `DOCKERHUB_TOKEN` | Access token Docker Hub |
-| `VPS_HOST` | IP publique du VPS |
-| `VPS_USER` | Utilisateur SSH (ex: `ubuntu`) |
-| `VPS_SSH_KEY` | Clé privée SSH (contenu complet) |
+| `VPS_HOST` | IP du VPS production |
+| `VPS_USER` | Utilisateur SSH production |
+| `VPS_SSH_KEY` | Clé privée SSH production |
+| `VPS_STAGING_HOST` | IP du VPS staging |
+| `VPS_STAGING_USER` | Utilisateur SSH staging |
+| `VPS_STAGING_SSH_KEY` | Clé privée SSH staging |
 
-### Images Docker Hub
-
-| Image | Description |
-|-------|------------|
-| `alphab224/dkpt-backend:latest` | API .NET 9 |
-| `alphab224/dkpt-frontend:latest` | Nuxt 4 SSR |
-
-### Déploiement production
-
-Le fichier `docker-compose.prod.yml` utilise les images Docker Hub (pas de build local) :
-
-```bash
-# Sur le VPS
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
-```
+> 📊 Documentation comparative détaillée : voir `docs/ci-comparison/`
 
 ### Tests unitaires
 
@@ -233,37 +233,70 @@ Dkpt/
 ├── docker-compose.yml          ← Orchestration des services (dev)
 ├── docker-compose.prod.yml     ← Orchestration production (images Docker Hub)
 ├── .env.example                ← Template des variables d'environnement
-├── .github/
-│   └── workflows/
-│       └── ci.yml              ← Pipeline CI/CD GitHub Actions
+│
+├── .github/workflows/          ← GitHub Actions (1 fichier = 1 pipeline)
+│   ├── ci.yml                     CI
+│   ├── cd-staging.yml             CD Staging
+│   ├── cd-prod.yml                CD Production
+│   ├── pr-check.yml               Vérification PR
+│   ├── mirror.yml                 Sync repos miroirs
+│   ├── variante-1-parallel.yml    Variante parallèle
+│   ├── variante-2-single-job.yml  Variante single job
+│   └── variante-4-matrix.yml     Variante matrix
+│
+├── .gitlab-ci.yml              ← GitLab CI orchestrateur parent
+├── .gitlab/pipelines/          ← GitLab CI pipelines enfants
+│   ├── ci.yml
+│   ├── cd-staging.yml
+│   ├── cd-prod.yml
+│   └── pr-check.yml
+│
+├── .azuredevops/               ← Azure DevOps
+│   ├── ci.yml
+│   ├── cd-staging.yml
+│   ├── cd-prod.yml
+│   ├── pr-check.yml
+│   └── templates/
+│       ├── build-dotnet.yml
+│       └── build-nuxt.yml
+│
+├── bitbucket-pipelines.yml     ← Bitbucket (tout dans 1 fichier)
+│
+├── docs/ci-comparison/         ← Documentation comparative (mémoire)
+│   ├── README.md
+│   ├── github-actions.md
+│   ├── gitlab-ci.md
+│   ├── azure-devops.md
+│   └── bitbucket.md
+│
 ├── nginx/
 │   └── nginx.conf              ← Configuration du reverse proxy
 ├── docker/
 │   └── seed/
-│       ├── seed-data.sql       ← Données de référence (settings, cotisations)
-│       ├── run-seed.sh         ← Script de seed automatique
-│       └── import-all.ps1     ← Script d'import manuel (PowerShell)
+│       ├── seed-data.sql
+│       ├── run-seed.sh
+│       └── import-all.ps1
 │
 ├── backend/                    ← API .NET 9 (Clean Architecture)
 │   ├── Dockerfile
 │   ├── Dkpt.sln
 │   ├── src/
-│   │   ├── Dkpt.Domain/           → Entités, Enums, Interfaces
-│   │   ├── Dkpt.Application/      → DTOs, Interfaces services
-│   │   ├── Dkpt.Infrastructure/   → EF Core, Repositories, Services
-│   │   └── Dkpt.Api/              → Controllers, Program.cs, Swagger
+│   │   ├── Dkpt.Domain/
+│   │   ├── Dkpt.Application/
+│   │   ├── Dkpt.Infrastructure/
+│   │   └── Dkpt.Api/
 │   └── tests/
-│       └── Dkpt.Tests/            → Tests unitaires xUnit (9 tests)
+│       └── Dkpt.Tests/
 │
 ├── frontend/                   ← Application Nuxt 4
 │   ├── Dockerfile
 │   ├── nuxt.config.ts
 │   └── app/
-│       ├── pages/                 → Routes (file-based)
-│       ├── composables/           → useAuth, useApi
-│       ├── layouts/               → default (sidebar), auth (login)
-│       ├── middleware/            → auth.global.ts
-│       └── types/                 → Interfaces TypeScript
+│       ├── pages/
+│       ├── composables/
+│       ├── layouts/
+│       ├── middleware/
+│       └── types/
 │
 └── .agents/workflows/          ← Workflows pour agents IA
 ```
@@ -286,7 +319,7 @@ Dkpt/
 | 1 — Backend API | ✅ Terminé | .NET 9, Clean Architecture, JWT, 5 tables, Swagger |
 | 2 — Frontend | ✅ Terminé | Nuxt 4, 10 pages, auth, layout responsive |
 | 3 — Infrastructure | ✅ Terminé | Docker Compose, Dockerfiles multi-stage, Nginx, seed auto |
-| 4 — CI/CD (GitHub Actions) | ✅ Terminé | Pipeline complet : Build → Test → Docker Hub → Deploy VPS |
-| 4 — CI/CD (GitLab CI) | ⬜ À faire | Comparaison pour le mémoire |
-| 4 — CI/CD (Bitbucket) | ⬜ À faire | Comparaison pour le mémoire |
-| 4 — CI/CD (Gitea) | ⬜ À faire | Comparaison pour le mémoire |
+| 4 — CI/CD (GitHub Actions) | ✅ Terminé | CI + CD staging/prod + PR check + variantes + mirroring |
+| 4 — CI/CD (GitLab CI) | 📝 Configuré | Pipelines parent-child créés, à tester après mirroring |
+| 4 — CI/CD (Azure DevOps) | 📝 Configuré | Pipelines + templates créés, enregistrement UI à faire |
+| 4 — CI/CD (Bitbucket) | 📝 Configuré | Fichier pipeline créé, à tester après mirroring |

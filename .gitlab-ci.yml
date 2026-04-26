@@ -1,0 +1,66 @@
+# ============================================
+# DKPT — GitLab CI/CD (Orchestrateur Parent)
+# ============================================
+# Ce fichier est le point d'entrée GitLab CI.
+# Il utilise le pattern "parent-child pipelines" pour
+# déclencher les pipelines enfants selon le contexte.
+#
+# Contrainte GitLab : ce fichier DOIT être à la racine
+# (ou le chemin configuré dans Settings → CI/CD → General)
+#
+# Pipelines enfants dans .gitlab/pipelines/
+# Comparaison : voir docs/ci-comparison/gitlab-ci.md
+# ============================================
+
+stages:
+  - check
+  - ci
+  - cd-staging
+  - cd-prod
+
+# ============================================
+# Pipeline enfant — PR/MR Check
+# ============================================
+mr-check:
+  stage: check
+  trigger:
+    include: .gitlab/pipelines/pr-check.yml
+    strategy: depend
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ============================================
+# Pipeline enfant — CI (Build & Test)
+# ============================================
+ci:
+  stage: ci
+  trigger:
+    include: .gitlab/pipelines/ci.yml
+    strategy: depend
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+# ============================================
+# Pipeline enfant — CD Staging
+# ============================================
+cd-staging:
+  stage: cd-staging
+  trigger:
+    include: .gitlab/pipelines/cd-staging.yml
+    strategy: depend
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop"
+  needs: [ci]
+
+# ============================================
+# Pipeline enfant — CD Production
+# ============================================
+cd-prod:
+  stage: cd-prod
+  trigger:
+    include: .gitlab/pipelines/cd-prod.yml
+    strategy: depend
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs: [ci]

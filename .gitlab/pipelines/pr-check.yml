@@ -1,0 +1,48 @@
+# ============================================
+# DKPT — GitLab CI : Pipeline enfant MR Check
+# ============================================
+# Vérification des Merge Requests (build + test, sans deploy)
+# Déclenché par l'orchestrateur parent sur merge_request_event
+#
+# Équivalent de : .github/workflows/pr-check.yml
+# ============================================
+
+stages:
+  - check
+
+variables:
+  DOTNET_VERSION: "9.0"
+  NODE_VERSION: "20"
+
+# ============================================
+# Job 1 — Backend Check
+# ============================================
+backend-check:
+  stage: check
+  image: mcr.microsoft.com/dotnet/sdk:9.0
+  script:
+    - cd backend
+    - dotnet restore
+    - dotnet build --no-restore --configuration Release
+    - dotnet test --no-build --configuration Release --verbosity minimal
+  cache:
+    key: dotnet-mr-${CI_MERGE_REQUEST_IID}
+    paths:
+      - backend/**/bin/
+      - backend/**/obj/
+
+# ============================================
+# Job 2 — Frontend Check
+# ============================================
+frontend-check:
+  stage: check
+  image: node:20-alpine
+  script:
+    - cd frontend
+    - npm ci --cache .npm
+    - npm run build
+  cache:
+    key: node-mr-${CI_MERGE_REQUEST_IID}
+    paths:
+      - frontend/.npm/
+      - frontend/node_modules/
