@@ -53,7 +53,7 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           push: true
           tags: |
             ${{ env.DOCKER_BACKEND_IMAGE }}:staging
@@ -67,7 +67,7 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           push: true
           tags: |
             ${{ env.DOCKER_FRONTEND_IMAGE }}:staging
