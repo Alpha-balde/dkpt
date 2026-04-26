@@ -53,10 +53,13 @@ deploy-staging:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - ssh-keyscan -H $VPS_STAGING_HOST >> ~/.ssh/known_hosts
   script:
+    # Copier les fichiers d'infrastructure sur le VPS
+    - scp docker-compose.prod.yml $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
+    - scp -r nginx/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
+    # Déployer
     - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "
         cd /opt/dkpt &&
-        export TAG=staging &&
-        docker compose pull &&
-        docker compose up -d --remove-orphans &&
+        docker compose -f docker-compose.prod.yml pull &&
+        docker compose -f docker-compose.prod.yml up -d --remove-orphans &&
         docker image prune -f &&
         echo '✅ Staging deploy complete!'"

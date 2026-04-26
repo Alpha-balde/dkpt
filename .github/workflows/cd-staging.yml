@@ -79,6 +79,18 @@ jobs:
     environment: staging
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy infrastructure files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_STAGING_HOST }}
+          username: ${{ secrets.VPS_STAGING_USER }}
+          key: ${{ secrets.VPS_STAGING_SSH_KEY }}
+          source: "docker-compose.prod.yml,nginx/nginx.conf"
+          target: "/opt/dkpt"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -87,8 +99,7 @@ jobs:
           key: ${{ secrets.VPS_STAGING_SSH_KEY }}
           script: |
             cd /opt/dkpt
-            export TAG=staging
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
             echo "✅ Staging deploy complete!"

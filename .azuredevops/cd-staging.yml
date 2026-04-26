@@ -67,6 +67,18 @@ stages:
           runOnce:
             deploy:
               steps:
+                - checkout: self
+
+                - task: CopyFilesOverSSH@0
+                  displayName: 'Copy infrastructure files to VPS'
+                  inputs:
+                    sshEndpoint: 'vps-staging-ssh'
+                    sourceFolder: '$(Build.SourcesDirectory)'
+                    contents: |
+                      docker-compose.prod.yml
+                      nginx/nginx.conf
+                    targetFolder: '/opt/dkpt'
+
                 - task: SSH@0
                   displayName: 'Deploy via SSH'
                   inputs:
@@ -74,8 +86,7 @@ stages:
                     runOptions: 'inline'
                     inline: |
                       cd /opt/dkpt
-                      export TAG=staging
-                      docker compose pull
-                      docker compose up -d --remove-orphans
+                      docker compose -f docker-compose.prod.yml pull
+                      docker compose -f docker-compose.prod.yml up -d --remove-orphans
                       docker image prune -f
                       echo "✅ Staging deploy complete!"
