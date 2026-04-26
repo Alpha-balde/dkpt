@@ -1,0 +1,149 @@
+# ============================================
+# DKPT — Bitbucket Pipelines
+# ============================================
+# Contrainte Bitbucket : un seul fichier à la racine.
+# Tout est organisé en sections (branches, pull-requests, custom).
+#
+# Bitbucket ne supporte PAS les pipelines séparés comme
+# GitHub Actions ou Azure DevOps. On utilise des sections
+# pour simuler le même comportement.
+#
+# Équivalent de :
+#   - .github/workflows/ci.yml
+#   - .github/workflows/cd-staging.yml
+#   - .github/workflows/cd-prod.yml
+#   - .github/workflows/pr-check.yml
+#
+# Comparaison : voir docs/ci-comparison/bitbucket.md
+# ============================================
+
+image: atlassian/default-image:4
+
+definitions:
+  # ============================================
+  # Steps réutilisables (YAML anchors)
+  # ============================================
+  steps:
+    - step: &build-test-backend
+        name: 'Backend — Build & Test'
+        image: mcr.microsoft.com/dotnet/sdk:9.0
+        caches:
+          - dotnetcore
+        script:
+          - cd backend
+          - dotnet restore
+          - dotnet build --no-restore --configuration Release
+          - dotnet test --no-build --configuration Release --verbosity minimal
+
+    - step: &build-frontend
+        name: 'Frontend — Build'
+        image: node:20-alpine
+        caches:
+          - node
+        script:
+          - cd frontend
+          - npm ci
+          - npm run build
+
+    - step: &docker-build-push-staging
+        name: 'Docker Build & Push (Staging)'
+        image: atlassian/default-image:4
+        services:
+          - docker
+        script:
+          - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          # Backend
+          - docker build -t $DOCKERHUB_USERNAME/dkpt-backend:staging ./backend
+          - docker push $DOCKERHUB_USERNAME/dkpt-backend:staging
+          # Frontend
+          - docker build -t $DOCKERHUB_USERNAME/dkpt-frontend:staging ./frontend
+          - docker push $DOCKERHUB_USERNAME/dkpt-frontend:staging
+
+    - step: &docker-build-push-prod
+        name: 'Docker Build & Push (Production)'
+        image: atlassian/default-image:4
+        services:
+          - docker
+        script:
+          - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          # Backend
+          - docker build -t $DOCKERHUB_USERNAME/dkpt-backend:latest ./backend
+          - docker push $DOCKERHUB_USERNAME/dkpt-backend:latest
+          # Frontend
+          - docker build -t $DOCKERHUB_USERNAME/dkpt-frontend:latest ./frontend
+          - docker push $DOCKERHUB_USERNAME/dkpt-frontend:latest
+
+    - step: &deploy-staging
+        name: 'Deploy to Staging'
+        deployment: staging
+        script:
+          - pipe: atlassian/ssh-run:0.8.1
+            variables:
+              SSH_USER: $VPS_STAGING_USER
+              SERVER: $VPS_STAGING_HOST
+              SSH_KEY: $VPS_STAGING_SSH_KEY
+              COMMAND: >
+                cd /opt/dkpt &&
+                export TAG=staging &&
+                docker compose pull &&
+                docker compose up -d --remove-orphans &&
+                docker image prune -f &&
+                echo "✅ Staging deploy complete!"
+
+    - step: &deploy-prod
+        name: 'Deploy to Production'
+        deployment: production
+        trigger: manual  # Approbation manuelle pour la production
+        script:
+          - pipe: atlassian/ssh-run:0.8.1
+            variables:
+              SSH_USER: $VPS_USER
+              SERVER: $VPS_HOST
+              SSH_KEY: $VPS_SSH_KEY
+              COMMAND: >
+                cd /opt/dkpt &&
+                docker compose pull &&
+                docker compose up -d --remove-orphans &&
+                docker image prune -f &&
+                echo "✅ Production deploy complete!"
+
+  services:
+    docker:
+      memory: 2048
+
+  caches:
+    dotnetcore: backend/**/obj
+
+pipelines:
+  # ============================================
+  # CI — Toutes les branches (build & test)
+  # ============================================
+  default:
+    - step: *build-test-backend
+    - step: *build-frontend
+
+  # ============================================
+  # CD — Par branche
+  # ============================================
+  branches:
+    # ---- Staging (develop) ----
+    develop:
+      - step: *build-test-backend
+      - step: *build-frontend
+      - step: *docker-build-push-staging
+      - step: *deploy-staging
+
+    # ---- Production (main) ----
+    main:
+      - step: *build-test-backend
+      - step: *build-frontend
+      - step: *docker-build-push-prod
+      - step: *deploy-prod
+
+  # ============================================
+  # PR Check — Vérification des Pull Requests
+  # ============================================
+  pull-requests:
+    '**':
+      - step: *build-test-backend
+      - step: *build-frontend
