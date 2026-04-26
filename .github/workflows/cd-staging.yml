@@ -74,10 +74,10 @@ jobs:
   # Job 2 — Deploy to Staging VPS
   # ============================================
   deploy:
-    name: Deploy to Staging
+    name: Deploy to Staging 
     runs-on: ubuntu-latest
     needs: docker
-    environment: staging
+    environment: Dev
 
     steps:
       - name: Checkout code
