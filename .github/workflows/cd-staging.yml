@@ -12,6 +12,7 @@
 name: DKPT CD — Staging
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["DKPT CI"]
     types: [completed]
