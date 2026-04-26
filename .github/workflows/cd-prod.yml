@@ -104,31 +104,32 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.prod.yml,nginx/nginx.conf"
+          source: "docker-compose.prod.yml,nginx/nginx.conf,scripts/"
           target: "/opt/dkpt"
 
-      - name: Generate .env and deploy via SSH
+      - name: Generate .env on VPS
+        uses: appleboy/ssh-action@v1
+        env:
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
+          JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,CONNECTION_STRING,JWT_SECRET_KEY,JWT_ISSUER,JWT_AUDIENCE,CORS_ORIGINS,NUXT_PUBLIC_API_BASE
+          script: bash /opt/dkpt/scripts/generate-env.sh
+
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            cat > /opt/dkpt/.env << 'EOF'
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            ConnectionStrings__DefaultConnection=${{ secrets.CONNECTION_STRING }}
-            Jwt__SecretKey=${{ secrets.JWT_SECRET_KEY }}
-            Jwt__Issuer=${{ secrets.JWT_ISSUER }}
-            Jwt__Audience=${{ secrets.JWT_AUDIENCE }}
-            Cors__Origins=${{ secrets.CORS_ORIGINS }}
-            ASPNETCORE_ENVIRONMENT=Production
-            NUXT_PUBLIC_API_BASE=${{ secrets.NUXT_PUBLIC_API_BASE }}
-            NUXT_API_BASE_INTERNAL=http://dkpt-backend-prod:8080
-            EOF
-            cd /opt/dkpt
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-            docker image prune -f
-            echo "✅ Production deploy complete!"
+          script: bash /opt/dkpt/scripts/deploy.sh
