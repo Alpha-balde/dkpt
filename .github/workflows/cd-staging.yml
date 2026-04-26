@@ -41,6 +41,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -50,6 +53,7 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.DOCKER_BACKEND_IMAGE }}:staging
@@ -63,6 +67,7 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.DOCKER_FRONTEND_IMAGE }}:staging
@@ -102,13 +107,26 @@ jobs:
           source: "docker-compose.prod.yml,nginx/nginx.conf"
           target: "/opt/dkpt"
 
-      - name: Deploy via SSH
+      - name: Generate .env and deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_STAGING_HOST }}
           username: ${{ secrets.VPS_STAGING_USER }}
           key: ${{ secrets.VPS_STAGING_SSH_KEY }}
           script: |
+            cat > /opt/dkpt/.env << 'EOF'
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            ConnectionStrings__DefaultConnection=${{ secrets.CONNECTION_STRING }}
+            Jwt__SecretKey=${{ secrets.JWT_SECRET_KEY }}
+            Jwt__Issuer=${{ secrets.JWT_ISSUER }}
+            Jwt__Audience=${{ secrets.JWT_AUDIENCE }}
+            Cors__Origins=${{ secrets.CORS_ORIGINS }}
+            ASPNETCORE_ENVIRONMENT=Production
+            NUXT_PUBLIC_API_BASE=${{ secrets.NUXT_PUBLIC_API_BASE }}
+            NUXT_API_BASE_INTERNAL=http://dkpt-backend-prod:8080
+            EOF
             cd /opt/dkpt
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
