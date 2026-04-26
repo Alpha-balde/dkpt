@@ -113,7 +113,6 @@ jobs:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          CONNECTION_STRING: ${{ secrets.CONNECTION_STRING }}
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
           JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
@@ -123,7 +122,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,CONNECTION_STRING,JWT_SECRET_KEY,JWT_ISSUER,JWT_AUDIENCE,CORS_ORIGINS,NUXT_PUBLIC_API_BASE
+          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET_KEY,JWT_ISSUER,JWT_AUDIENCE,CORS_ORIGINS,NUXT_PUBLIC_API_BASE
           script: bash /opt/dkpt/scripts/generate-env.sh
 
       - name: Deploy via SSH

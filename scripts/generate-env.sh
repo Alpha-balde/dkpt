@@ -14,6 +14,9 @@ set -e
 
 ENV_FILE="/opt/dkpt/.env"
 
+# Construire la connection string à partir des variables Postgres
+CONNECTION_STRING="Host=dkpt-db-prod;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+
 echo "📝 Generating $ENV_FILE..."
 
 cat > "$ENV_FILE" << EOF
