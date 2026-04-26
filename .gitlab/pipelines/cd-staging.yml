@@ -53,6 +53,8 @@ deploy-staging:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh
     - ssh-keyscan -H $VPS_STAGING_HOST >> ~/.ssh/known_hosts
   script:
+    # Préparer le dossier de déploiement
+    - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "sudo mkdir -p /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
     # Copier les fichiers d'infrastructure sur le VPS
     - scp docker-compose.prod.yml $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
     - scp -r nginx/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/

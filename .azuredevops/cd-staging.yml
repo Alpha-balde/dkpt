@@ -69,6 +69,15 @@ stages:
               steps:
                 - checkout: self
 
+                - task: SSH@0
+                  displayName: 'Prepare deployment directory'
+                  inputs:
+                    sshEndpoint: 'vps-staging-ssh'
+                    runOptions: 'inline'
+                    inline: |
+                      sudo mkdir -p /opt/dkpt/nginx
+                      sudo chown -R $(whoami):$(whoami) /opt/dkpt
+
                 - task: CopyFilesOverSSH@0
                   displayName: 'Copy infrastructure files to VPS'
                   inputs:
