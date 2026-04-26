@@ -1,0 +1,62 @@
+# ============================================
+# DKPT — GitLab CI : Pipeline enfant CD Production
+# ============================================
+# Docker build & push (tag :latest) + deploy sur VPS production
+# Déclenché par l'orchestrateur parent sur la branche main
+#
+# Équivalent de : .github/workflows/cd-prod.yml
+# ============================================
+
+stages:
+  - docker
+  - deploy
+
+variables:
+  DOCKER_BACKEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-backend
+  DOCKER_FRONTEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-frontend
+
+# ============================================
+# Job 1 — Docker Build & Push (tag :latest)
+# ============================================
+docker-build-push:
+  stage: docker
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  script:
+    # Backend
+    - docker build -t $DOCKER_BACKEND_IMAGE:latest -t $DOCKER_BACKEND_IMAGE:$CI_COMMIT_SHORT_SHA ./backend
+    - docker push $DOCKER_BACKEND_IMAGE:latest
+    - docker push $DOCKER_BACKEND_IMAGE:$CI_COMMIT_SHORT_SHA
+    # Frontend
+    - docker build -t $DOCKER_FRONTEND_IMAGE:latest -t $DOCKER_FRONTEND_IMAGE:$CI_COMMIT_SHORT_SHA ./frontend
+    - docker push $DOCKER_FRONTEND_IMAGE:latest
+    - docker push $DOCKER_FRONTEND_IMAGE:$CI_COMMIT_SHORT_SHA
+
+# ============================================
+# Job 2 — Deploy to Production VPS
+# ============================================
+deploy-production:
+  stage: deploy
+  image: alpine:latest
+  environment:
+    name: production
+    url: https://dkpt.example.com
+  when: manual  # Approbation manuelle requise pour la production
+  before_script:
+    - apk add --no-cache openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$VPS_SSH_KEY" | ssh-add -
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan -H $VPS_HOST >> ~/.ssh/known_hosts
+  script:
+    - ssh $VPS_USER@$VPS_HOST "
+        cd /opt/dkpt &&
+        docker compose pull &&
+        docker compose up -d --remove-orphans &&
+        docker image prune -f &&
+        echo '✅ Production deploy complete!'"

@@ -1,0 +1,48 @@
+# ============================================
+# DKPT — GitLab CI : Pipeline enfant CI
+# ============================================
+# Build & Test du backend (.NET 9) et du frontend (Nuxt 4)
+# Déclenché par l'orchestrateur parent (.gitlab-ci.yml)
+#
+# Équivalent de : .github/workflows/ci.yml
+# ============================================
+
+stages:
+  - build-test
+
+variables:
+  DOTNET_VERSION: "9.0"
+  NODE_VERSION: "20"
+
+# ============================================
+# Job 1 — Backend Build & Test
+# ============================================
+backend-build-test:
+  stage: build-test
+  image: mcr.microsoft.com/dotnet/sdk:9.0
+  script:
+    - cd backend
+    - dotnet restore
+    - dotnet build --no-restore --configuration Release
+    - dotnet test --no-build --configuration Release --verbosity minimal
+  cache:
+    key: dotnet-${CI_COMMIT_REF_SLUG}
+    paths:
+      - backend/**/bin/
+      - backend/**/obj/
+
+# ============================================
+# Job 2 — Frontend Build
+# ============================================
+frontend-build:
+  stage: build-test
+  image: node:20-alpine
+  script:
+    - cd frontend
+    - npm ci --cache .npm
+    - npm run build
+  cache:
+    key: node-${CI_COMMIT_REF_SLUG}
+    paths:
+      - frontend/.npm/
+      - frontend/node_modules/
