@@ -74,7 +74,9 @@ stages:
     jobs:
       - deployment: DeployVPS
         displayName: 'Deploy to Staging VPS'
-        environment: 'Staging'  # Agent d'environnement sur le VPS Staging
+        environment:
+          name: 'Staging'
+          resourceType: VirtualMachine  # Exécuter sur l'agent VM du VPS
         strategy:
           runOnce:
             deploy:

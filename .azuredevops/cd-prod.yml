@@ -74,7 +74,9 @@ stages:
     jobs:
       - deployment: DeployVPS
         displayName: 'Deploy to Production VPS'
-        environment: 'Prod'  # Agent d'environnement sur le VPS Production
+        environment:
+          name: 'Prod'
+          resourceType: VirtualMachine  # Exécuter sur l'agent VM du VPS
         strategy:
           runOnce:
             deploy:
