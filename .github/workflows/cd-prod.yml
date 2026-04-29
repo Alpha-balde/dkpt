@@ -14,9 +14,9 @@ name: DKPT CD — Production
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["DKPT CI"]
+    workflows: ["DKPT CD — Staging"]
     types: [completed]
-    branches: [develop]
+    branches: [main]
 
 env:
   DOCKER_BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-backend
