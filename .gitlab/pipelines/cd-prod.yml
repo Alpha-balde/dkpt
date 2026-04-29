@@ -59,10 +59,14 @@ deploy-production:
     # Copier les fichiers d'infrastructure sur le VPS
     - scp docker-compose.prod.yml $VPS_USER@$VPS_HOST:/opt/dkpt/
     - scp -r nginx/ $VPS_USER@$VPS_HOST:/opt/dkpt/
+    - scp -r docker/ $VPS_USER@$VPS_HOST:/opt/dkpt/
+    - scp -r docs/ $VPS_USER@$VPS_HOST:/opt/dkpt/
     # Déployer
     - ssh $VPS_USER@$VPS_HOST "
         cd /opt/dkpt &&
         docker compose -f docker-compose.prod.yml pull &&
         docker compose -f docker-compose.prod.yml up -d --remove-orphans &&
+        echo '🌱 Running database seed (idempotent)...' &&
+        docker compose -f docker-compose.prod.yml --profile seed up &&
         docker image prune -f &&
         echo '✅ Production deploy complete!'"
