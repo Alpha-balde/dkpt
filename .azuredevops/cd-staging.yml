@@ -22,7 +22,7 @@ resources:
       trigger:
         branches:
           include:
-            - develop
+            - main
 
 variables:
   - group: dkpt-secrets   # Variables communes (DOCKERHUB_USERNAME, POSTGRES_DB, etc.)
