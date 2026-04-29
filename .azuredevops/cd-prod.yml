@@ -4,6 +4,12 @@
 # Docker build & push (tag :latest) + deploy sur VPS production
 # Déclenché après succès du pipeline CI sur main
 #
+# Architecture :
+#   Stage 1 (Docker) : Agent self-hosted DKPT-ARM64 (pool Default)
+#                      → Build natif ARM64 + push Docker Hub
+#   Stage 2 (Deploy) : Agent d'environnement Prod (sur le VPS)
+#                      → Déploiement local (pas de SSH)
+#
 # Équivalent de : .github/workflows/cd-prod.yml
 # ============================================
 
@@ -18,35 +24,41 @@ resources:
           include:
             - main
 
-pool:
-  vmImage: ubuntu-latest
-
 variables:
-  dockerBackendImage: '$(DOCKERHUB_USERNAME)/dkpt-backend'
-  dockerFrontendImage: '$(DOCKERHUB_USERNAME)/dkpt-frontend'
+  - group: dkpt-secrets   # Variables communes
+  - group: dkpt-prod      # Variables spécifiques production
+  - name: dockerBackendImage
+    value: '$(DOCKERHUB_USERNAME)/dkpt-backend'
+  - name: dockerFrontendImage
+    value: '$(DOCKERHUB_USERNAME)/dkpt-frontend'
 
 stages:
   # ============================================
-  # Stage 1 — Docker Build & Push
+  # Stage 1 — Docker Build & Push (tag :latest)
   # ============================================
   - stage: Docker
     displayName: 'Docker Build & Push (Production)'
+    pool: Default  # Agent self-hosted DKPT-ARM64 (ARM64 natif)
     jobs:
       - job: BuildPush
         displayName: 'Build & Push Images'
         steps:
+          - checkout: self
+
           - task: Docker@2
             displayName: 'Login to Docker Hub'
             inputs:
               containerRegistry: 'dockerhub-connection'
               command: 'login'
 
+          # ---- Backend Image ----
           - script: |
               docker build -t $(dockerBackendImage):latest -t $(dockerBackendImage):$(Build.SourceVersion) ./backend
               docker push $(dockerBackendImage):latest
               docker push $(dockerBackendImage):$(Build.SourceVersion)
             displayName: 'Build & Push Backend'
 
+          # ---- Frontend Image ----
           - script: |
               docker build -t $(dockerFrontendImage):latest -t $(dockerFrontendImage):$(Build.SourceVersion) ./frontend
               docker push $(dockerFrontendImage):latest
@@ -54,7 +66,7 @@ stages:
             displayName: 'Build & Push Frontend'
 
   # ============================================
-  # Stage 2 — Deploy to Production
+  # Stage 2 — Deploy to Production VPS
   # ============================================
   - stage: DeployProd
     displayName: 'Deploy to Production'
@@ -62,43 +74,11 @@ stages:
     jobs:
       - deployment: DeployVPS
         displayName: 'Deploy to Production VPS'
-        environment: 'production'
+        environment: 'Prod'  # Agent d'environnement sur le VPS Production
         strategy:
           runOnce:
             deploy:
               steps:
                 - checkout: self
 
-                - task: SSH@0
-                  displayName: 'Prepare deployment directory'
-                  inputs:
-                    sshEndpoint: 'vps-prod-ssh'
-                    runOptions: 'inline'
-                    inline: |
-                      sudo mkdir -p /opt/dkpt/nginx
-                      sudo chown -R $(whoami):$(whoami) /opt/dkpt
-
-                - task: CopyFilesOverSSH@0
-                  displayName: 'Copy infrastructure files to VPS'
-                  inputs:
-                    sshEndpoint: 'vps-prod-ssh'
-                    sourceFolder: '$(Build.SourcesDirectory)'
-                    contents: |
-                      docker-compose.prod.yml
-                      nginx/nginx.conf
-                      docker/seed/**
-                    targetFolder: '/opt/dkpt'
-
-                - task: SSH@0
-                  displayName: 'Deploy via SSH'
-                  inputs:
-                    sshEndpoint: 'vps-prod-ssh'
-                    runOptions: 'inline'
-                    inline: |
-                      cd /opt/dkpt
-                      docker compose -f docker-compose.prod.yml pull
-                      docker compose -f docker-compose.prod.yml up -d --remove-orphans
-                      echo "🌱 Running database seed (idempotent)..."
-                      docker compose -f docker-compose.prod.yml --profile seed up seed
-                      docker image prune -f
-                      echo "✅ Production deploy complete!"
+                - template: templates/deploy-vps.yml
