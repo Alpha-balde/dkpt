@@ -59,13 +59,12 @@ deploy-staging:
     - scp docker-compose.prod.yml $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
     - scp -r nginx/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
     - scp -r docker/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
-    - scp -r docs/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
     # Déployer
     - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "
         cd /opt/dkpt &&
         docker compose -f docker-compose.prod.yml pull &&
         docker compose -f docker-compose.prod.yml up -d --remove-orphans &&
         echo '🌱 Running database seed (idempotent)...' &&
-        docker compose -f docker-compose.prod.yml --profile seed up &&
+        docker compose -f docker-compose.prod.yml --profile seed up seed &&
         docker image prune -f &&
         echo '✅ Staging deploy complete!'"

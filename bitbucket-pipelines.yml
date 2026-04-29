@@ -83,7 +83,7 @@ definitions:
               SSH_USER: $VPS_STAGING_USER
               SERVER: $VPS_STAGING_HOST
               SSH_KEY: $VPS_STAGING_SSH_KEY
-              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed /opt/dkpt/docs/dkpt_sql && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
+              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
           # Copier les fichiers d'infrastructure sur le VPS
           - pipe: atlassian/scp-deploy:1.4.0
             variables:
@@ -106,13 +106,6 @@ definitions:
               REMOTE_PATH: '/opt/dkpt/docker/seed'
               LOCAL_PATH: 'docker/seed/*'
               SSH_KEY: $VPS_STAGING_SSH_KEY
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_STAGING_USER
-              SERVER: $VPS_STAGING_HOST
-              REMOTE_PATH: '/opt/dkpt/docs/dkpt_sql'
-              LOCAL_PATH: 'docs/dkpt_sql/*'
-              SSH_KEY: $VPS_STAGING_SSH_KEY
           # Déployer
           - pipe: atlassian/ssh-run:0.8.1
             variables:
@@ -124,7 +117,7 @@ definitions:
                 docker compose -f docker-compose.prod.yml pull &&
                 docker compose -f docker-compose.prod.yml up -d --remove-orphans &&
                 echo "🌱 Running database seed (idempotent)..." &&
-                docker compose -f docker-compose.prod.yml --profile seed up &&
+                docker compose -f docker-compose.prod.yml --profile seed up seed &&
                 docker image prune -f &&
                 echo "✅ Staging deploy complete!"
 
@@ -139,7 +132,7 @@ definitions:
               SSH_USER: $VPS_USER
               SERVER: $VPS_HOST
               SSH_KEY: $VPS_SSH_KEY
-              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed /opt/dkpt/docs/dkpt_sql && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
+              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
           # Copier les fichiers d'infrastructure sur le VPS
           - pipe: atlassian/scp-deploy:1.4.0
             variables:
@@ -162,13 +155,6 @@ definitions:
               REMOTE_PATH: '/opt/dkpt/docker/seed'
               LOCAL_PATH: 'docker/seed/*'
               SSH_KEY: $VPS_SSH_KEY
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_USER
-              SERVER: $VPS_HOST
-              REMOTE_PATH: '/opt/dkpt/docs/dkpt_sql'
-              LOCAL_PATH: 'docs/dkpt_sql/*'
-              SSH_KEY: $VPS_SSH_KEY
           # Déployer
           - pipe: atlassian/ssh-run:0.8.1
             variables:
@@ -180,7 +166,7 @@ definitions:
                 docker compose -f docker-compose.prod.yml pull &&
                 docker compose -f docker-compose.prod.yml up -d --remove-orphans &&
                 echo "🌱 Running database seed (idempotent)..." &&
-                docker compose -f docker-compose.prod.yml --profile seed up &&
+                docker compose -f docker-compose.prod.yml --profile seed up seed &&
                 docker image prune -f &&
                 echo "✅ Production deploy complete!"
 

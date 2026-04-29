@@ -87,7 +87,6 @@ stages:
                       docker-compose.prod.yml
                       nginx/nginx.conf
                       docker/seed/**
-                      docs/dkpt_sql/**
                     targetFolder: '/opt/dkpt'
 
                 - task: SSH@0
@@ -100,6 +99,6 @@ stages:
                       docker compose -f docker-compose.prod.yml pull
                       docker compose -f docker-compose.prod.yml up -d --remove-orphans
                       echo "🌱 Running database seed (idempotent)..."
-                      docker compose -f docker-compose.prod.yml --profile seed up
+                      docker compose -f docker-compose.prod.yml --profile seed up seed
                       docker image prune -f
                       echo "✅ Production deploy complete!"

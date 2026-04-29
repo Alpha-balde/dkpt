@@ -13,7 +13,7 @@ name: Mirror Repositories
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
 
 jobs:
   # ============================================
