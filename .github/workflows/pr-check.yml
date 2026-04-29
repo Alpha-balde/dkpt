@@ -10,9 +10,9 @@
 
 name: DKPT PR Check
 
-on:
+on: 
   pull_request:
-    branches: [main, develop]
+    branches: [main]
     paths-ignore:
       - "README.md"
       - "docs/**"
