@@ -1,0 +1,41 @@
+# ============================================
+# DKPT — Azure DevOps : Template Deploy VPS
+# ============================================
+# Template réutilisable pour le déploiement sur VPS.
+# Exécuté par l'agent d'environnement directement sur le VPS
+# (pas de SSH — tout est local).
+#
+# Réutilise les mêmes scripts que GitHub Actions :
+#   - scripts/generate-env.sh → Génère le .env
+#   - scripts/deploy.sh       → Pull images + docker compose up
+#
+# Utilisé par : cd-staging.yml, cd-prod.yml
+# ============================================
+
+steps:
+  - script: |
+      sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed /opt/dkpt/scripts
+      sudo chown -R $(whoami):$(whoami) /opt/dkpt
+    displayName: 'Prepare deployment directory'
+
+  - script: |
+      cp $(Build.SourcesDirectory)/docker-compose.prod.yml /opt/dkpt/
+      cp $(Build.SourcesDirectory)/nginx/nginx.conf /opt/dkpt/nginx/
+      cp -r $(Build.SourcesDirectory)/docker/seed/ /opt/dkpt/docker/seed/
+      cp -r $(Build.SourcesDirectory)/scripts/ /opt/dkpt/scripts/
+    displayName: 'Copy infrastructure files'
+
+  - script: |
+      export POSTGRES_DB="$(POSTGRES_DB)"
+      export POSTGRES_USER="$(POSTGRES_USER)"
+      export POSTGRES_PASSWORD="$(POSTGRES_PASSWORD)"
+      export JWT_SECRET_KEY="$(JWT_SECRET_KEY)"
+      export JWT_ISSUER="$(JWT_ISSUER)"
+      export JWT_AUDIENCE="$(JWT_AUDIENCE)"
+      export CORS_ORIGINS="$(CORS_ORIGINS)"
+      export NUXT_PUBLIC_API_BASE="$(NUXT_PUBLIC_API_BASE)"
+      bash /opt/dkpt/scripts/generate-env.sh
+    displayName: 'Generate .env file'
+
+  - script: bash /opt/dkpt/scripts/deploy.sh
+    displayName: 'Deploy via docker compose'
