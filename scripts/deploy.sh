@@ -25,7 +25,7 @@ echo "🔄 Starting containers..."
 docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 
 echo "🌱 Running database seed (idempotent)..."
-docker compose -f "$COMPOSE_FILE" --profile seed up
+docker compose -f "$COMPOSE_FILE" --profile seed up seed
 
 echo "🧹 Cleaning old images..."
 docker image prune -f

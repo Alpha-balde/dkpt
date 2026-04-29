@@ -100,7 +100,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.prod.yml,nginx/nginx.conf,scripts/,docker/seed/,docs/dkpt_sql/"
+          source: "docker-compose.prod.yml,nginx/nginx.conf,scripts/,docker/seed/"
           target: "/opt/dkpt"
 
       - name: Generate .env on VPS
