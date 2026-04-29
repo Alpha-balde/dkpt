@@ -16,7 +16,7 @@ on:
   workflow_run:
     workflows: ["DKPT CI"]
     types: [completed]
-    branches: [develop]
+    branches: [main]
 
 env:
   DOCKER_BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-backend
