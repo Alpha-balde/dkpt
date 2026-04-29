@@ -14,16 +14,30 @@
 
 steps:
   - script: |
-      sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed /opt/dkpt/scripts
-      sudo chown -R $(whoami):$(whoami) /opt/dkpt
-    displayName: 'Prepare deployment directory'
+      echo "=== Debug: Workspace paths ==="
+      echo "Build.SourcesDirectory = $(Build.SourcesDirectory)"
+      echo "System.DefaultWorkingDirectory = $(System.DefaultWorkingDirectory)"
+      echo "Pipeline.Workspace = $(Pipeline.Workspace)"
+      ls -la $(System.DefaultWorkingDirectory)/ || echo "DefaultWorkingDirectory not found"
+      ls -la $(Pipeline.Workspace)/s/ || echo "Pipeline.Workspace/s not found"
+    displayName: 'Debug: Show workspace paths'
 
   - script: |
-      cp $(Build.SourcesDirectory)/docker-compose.prod.yml /opt/dkpt/
-      cp $(Build.SourcesDirectory)/nginx/nginx.conf /opt/dkpt/nginx/
-      cp -r $(Build.SourcesDirectory)/docker/seed/ /opt/dkpt/docker/seed/
-      cp -r $(Build.SourcesDirectory)/scripts/ /opt/dkpt/scripts/
-    displayName: 'Copy infrastructure files'
+      SOURCES="$(System.DefaultWorkingDirectory)"
+      # Fallback si DefaultWorkingDirectory ne contient pas le code
+      if [ ! -f "$SOURCES/docker-compose.prod.yml" ]; then
+        SOURCES="$(Pipeline.Workspace)/s"
+      fi
+      echo "Using source path: $SOURCES"
+      sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed /opt/dkpt/scripts
+      sudo chown -R $(whoami):$(whoami) /opt/dkpt
+      cp "$SOURCES/docker-compose.prod.yml" /opt/dkpt/
+      cp "$SOURCES/nginx/nginx.conf" /opt/dkpt/nginx/
+      cp -r "$SOURCES/docker/seed/." /opt/dkpt/docker/seed/
+      cp -r "$SOURCES/scripts/." /opt/dkpt/scripts/
+      echo "✅ Files copied to /opt/dkpt/"
+      ls -la /opt/dkpt/scripts/
+    displayName: 'Prepare & copy infrastructure files'
 
   - script: |
       export POSTGRES_DB="$(POSTGRES_DB)"
