@@ -88,3 +88,46 @@ steps:
       targetPath: 'zap-reports'
       artifactName: 'zap-security-reports'
     condition: always()
+
+  # ============================================
+  # Playwright — E2E Functional Tests
+  # ============================================
+  - script: |
+      SOURCES="$(System.DefaultWorkingDirectory)"
+      if [ ! -d "$SOURCES/tests/e2e" ]; then
+        SOURCES="$(Pipeline.Workspace)/s"
+      fi
+      echo "🧪 Installing Playwright..."
+      cd "$SOURCES/tests/e2e"
+      npm ci
+      npx playwright install --with-deps chromium
+    displayName: 'Setup Playwright'
+
+  - script: |
+      SOURCES="$(System.DefaultWorkingDirectory)"
+      if [ ! -d "$SOURCES/tests/e2e" ]; then
+        SOURCES="$(Pipeline.Workspace)/s"
+      fi
+      echo "🧪 Running Playwright E2E tests..."
+      cd "$SOURCES/tests/e2e"
+      npx playwright test
+    displayName: 'Run Playwright E2E Tests'
+    env:
+      BASE_URL: 'http://localhost'
+    continueOnError: true
+
+  - task: PublishTestResults@2
+    displayName: 'Publish Playwright Results'
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/tests/e2e/results.xml'
+      testRunTitle: 'Playwright E2E Tests'
+      failTaskOnFailedTests: false
+    condition: always()
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Playwright Report'
+    inputs:
+      targetPath: 'tests/e2e/playwright-report'
+      artifactName: 'playwright-report'
+    condition: always()

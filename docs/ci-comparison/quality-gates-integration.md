@@ -14,10 +14,10 @@ Enrichir le pipeline CI/CD avec 5 catégories de vérifications :
 |:-:|-----------|-------|----------|:------:|
 | 1 | Analyse statique (frontend) | ESLint + TypeCheck | CI | ✅ |
 | 2 | Analyse statique (backend) | dotnet analyzers + code coverage | CI | ✅ |
-| 3 | Analyse qualité/sécurité | SonarCloud | CI | 🔄 En cours |
-| 4 | Load testing | k6 | CD Staging (post-deploy) | ⬜ À faire |
-| 5 | Pentesting (DAST) | OWASP ZAP | CD Staging (post-deploy) | ⬜ À faire |
-| 6 | Tests fonctionnels (E2E) | Playwright | CD Staging (post-deploy) | ⬜ À faire |
+| 3 | Analyse qualité/sécurité | SonarCloud | CI | ⚠️ (Publish 403) |
+| 4 | Load testing | k6 | CD Staging (post-deploy) | ✅ |
+| 5 | Pentesting (DAST) | OWASP ZAP | CD Staging (post-deploy) | ✅ |
+| 6 | Tests fonctionnels (E2E) | Playwright | CD Staging (post-deploy) | ✅ |
 
 ---
 
@@ -196,28 +196,153 @@ Enrichir le pipeline CI/CD avec 5 catégories de vérifications :
 
 ---
 
-## Phases suivantes (à documenter)
+## Phase 3 — k6 Load Testing
 
-### Phase 3 — k6 Load Testing
-*À venir*
+**Fichiers créés/modifiés** :
+- `tests/load/smoke-test.js` (nouveau) — Script k6 de smoke test
+- `.azuredevops/templates/quality-gate.yml` (nouveau) — Template post-deploy
+- `.azuredevops/cd-staging.yml` (modifié) — Ajout du stage QualityGate
 
-### Phase 4 — OWASP ZAP Pentesting
-*À venir*
+### Script de test (`smoke-test.js`)
 
-### Phase 5 — Playwright E2E
-*À venir*
+Le script k6 exécute 4 types de requêtes :
+
+| # | Requête | Vérification |
+|:-:|---------|-------------|
+| 1 | `GET /` | Page SSR Nuxt accessible, latence < 2s |
+| 2 | `GET /swagger/v1/swagger.json` | API accessible |
+| 3 | `POST /api/Auth/login` | Login fonctionne, retourne un token JWT |
+| 4 | `GET /api/Members` + `GET /api/Cotisations` | Endpoints authentifiés répondent |
+
+**Seuils (thresholds)** :
+- `http_req_duration: p(95) < 2000ms` — 95% des requêtes sous 2 secondes
+- `http_req_failed: rate < 0.05` — Moins de 5% d'erreurs
+
+**Profil de charge** :
+- 10s montée → 5 VUs
+- 20s maintien → 10 VUs
+- 10s descente → 0 VU
+
+### Architecture
+
+```
+cd-staging.yml
+├── Stage 1: Docker Build & Push (agent ARM64)
+├── Stage 2: Deploy to Staging (agent VPS)
+└── Stage 3: Quality Gate (agent VPS)      ← NOUVEAU
+    ├── k6 smoke test
+    ├── OWASP ZAP scans
+    └── Playwright E2E
+```
+
+Le stage QualityGate s'exécute **sur le VPS staging** (même agent d'environnement que le deploy), ce qui permet de tester l'app via `http://localhost` sans exposition réseau.
+
+### Configuration manuelle
+
+| # | Action | Chemin dans l'UI |
+|:-:|--------|-----------------|
+| 1 | Ajouter `TEST_USER_EMAIL` dans dkpt-staging | Pipelines → Library → dkpt-staging |
+| 2 | Ajouter `TEST_USER_PASSWORD` (secret) dans dkpt-staging | Pipelines → Library → dkpt-staging |
+
+> **Sécurité** : Les credentials de test sont injectées via des variables d'environnement depuis le variable group `dkpt-staging`, jamais stockées dans le code source.
+
+### Résultat Phase 3
+
+| Step | Statut | Durée |
+|------|:------:|------:|
+| Setup k6 (installation ARM64) | ✅ | ~5s |
+| Load Test (k6) | ✅ | ~40s |
+| Publish k6 Results | ✅ | artefact |
+
+**Commit** : `6eb7857` — `ci: add k6 load testing as Quality Gate stage in CD Staging (Phase 3)`
+
+---
+
+## Phase 4 — OWASP ZAP Pentesting
+
+**Fichier modifié** : `.azuredevops/templates/quality-gate.yml`
+
+### Scans configurés
+
+| Scan | Commande | Cible | Description |
+|------|----------|-------|-------------|
+| Baseline | `zap-baseline.py` | `http://localhost` | Scan passif du site web — détecte les headers de sécurité manquants, cookies non sécurisés, CSP, etc. |
+| API | `zap-api-scan.py` | `/swagger/v1/swagger.json` | Scan actif de l'API via la spec OpenAPI — détecte les failles d'injection, d'authentification, etc. |
+
+### Détails techniques
+
+- **Exécution** : Via Docker (`ghcr.io/zaproxy/zaproxy:stable`) avec `--network host` pour accéder au localhost du VPS
+- **Rapports** : HTML (lisible) + JSON (parsable) → publiés en artefact `zap-security-reports`
+- **Mode** : `-I` (informatif) + `continueOnError: true` → ne bloque pas le pipeline
+
+> **Portabilité** : ZAP s'exécute via Docker, donc le même setup fonctionne sur toutes les plateformes CI/CD. Pas de task Azure DevOps spécifique, ce qui facilite la comparaison.
+
+### Résultat Phase 4
+
+| Step | Statut |
+|------|:------:|
+| Security Scan — Baseline | ✅ |
+| Security Scan — API | ✅ |
+| Publish ZAP Security Reports | ✅ |
+
+**Commit** : `5d9c2bd` — `ci: add OWASP ZAP baseline + API security scans (Phase 4)`
+
+---
+
+## Phase 5 — Playwright E2E
+
+**Fichiers créés** :
+- `tests/e2e/package.json` — Dépendances Playwright
+- `tests/e2e/playwright.config.ts` — Configuration (Chromium, JUnit reporter)
+- `tests/e2e/specs/auth.spec.ts` — Tests d'authentification (3 tests)
+- `tests/e2e/specs/health.spec.ts` — Tests de santé (3 tests)
+
+**Fichier modifié** : `.azuredevops/templates/quality-gate.yml`
+
+### Tests E2E
+
+| Fichier | Test | Vérification |
+|---------|------|--------------|
+| `auth.spec.ts` | Page login accessible | Champs email + password visibles |
+| `auth.spec.ts` | Login invalide échoue | Reste sur /login après erreur |
+| `auth.spec.ts` | Redirect non-authentifié | /dashboard → /login |
+| `health.spec.ts` | Page accueil accessible | Status 200 |
+| `health.spec.ts` | Swagger accessible | Retourne JSON OpenAPI |
+| `health.spec.ts` | API protégée | Status 401 sans token |
+
+### Détails techniques
+
+- **Browser** : Chromium (headless sur le VPS ARM64)
+- **Reporter** : JUnit XML → publié dans l'onglet **Tests** d'Azure DevOps + HTML → artefact
+- **Screenshots** : Capturés automatiquement en cas d'échec
+- **Traces** : Enregistrées au premier retry pour debug
+
+> **Spécificité ARM64** : Playwright supporte nativement ARM64 depuis la v1.42. L'installation via `npx playwright install --with-deps chromium` gère automatiquement les dépendances système (libnss3, libatk, etc.).
+
+### Résultat Phase 5
+
+| Step | Statut |
+|------|:------:|
+| Setup Playwright | ✅ |
+| Run Playwright E2E Tests | ✅ |
+| Publish Playwright Results | ✅ |
+| Publish Playwright Report | ✅ |
+
+**Commit** : `3437b3b` — `ci: add Playwright E2E tests in Quality Gate (Phase 5)`
 
 ---
 
 ## Récapitulatif des manipulations manuelles (Azure DevOps)
 
-| # | Action | Quand | Fait ? |
-|:-:|--------|-------|:------:|
-| 1 | Installer l'extension SonarCloud depuis le Marketplace | Avant Phase 2 | ✅ |
-| 2 | Créer un compte SonarCloud + importer le projet | Avant Phase 2 | ✅ |
-| 3 | Créer la service connection `sonarcloud-connection` (type SonarCloud) | Avant Phase 2 | ✅ |
-| 4 | Ajouter variables `SONAR_*` dans `dkpt-secrets` (org en minuscules) | Avant Phase 2 | ✅ |
-| 5 | Permissions SonarCloud : Execute Analysis + Browse | Avant Phase 2 | ✅ |
+| # | Action | Phase | Fait ? |
+|:-:|--------|:-----:|:------:|
+| 1 | Installer l'extension SonarCloud depuis le Marketplace | 2 | ✅ |
+| 2 | Créer un compte SonarCloud + importer le projet | 2 | ✅ |
+| 3 | Créer la service connection `sonarcloud-connection` (type SonarCloud) | 2 | ✅ |
+| 4 | Ajouter variables `SONAR_*` dans `dkpt-secrets` (org en minuscules) | 2 | ✅ |
+| 5 | Permissions SonarCloud : Execute Analysis + Browse | 2 | ✅ |
+| 6 | Ajouter `TEST_USER_EMAIL` dans `dkpt-staging` | 3 | ✅ |
+| 7 | Ajouter `TEST_USER_PASSWORD` (secret) dans `dkpt-staging` | 3 | ✅ |
 
 ## Récapitulatif des problèmes rencontrés
 
@@ -233,3 +358,42 @@ Enrichir le pipeline CI/CD avec 5 catégories de vérifications :
 | 8 | 2 | 403 sur API Quality Gate | Permissions |
 | 9 | 2 | Shallow clone incompatible avec SonarCloud | Configuration par défaut |
 | 10 | 2 | PR merge ref introuvable | Synchronisation GitHub ↔ Azure DevOps |
+
+## Architecture finale du pipeline
+
+```
+┌─────────────────────────────────────────────────────┐
+│  CI Pipeline (ci.yml) — Agent Microsoft-hosted       │
+│  ┌─────────────────────┐ ┌────────────────────────┐  │
+│  │ Backend             │ │ Frontend               │  │
+│  │ • SonarCloud Prepare│ │ • Node.js 22           │  │
+│  │ • dotnet restore    │ │ • npm ci               │  │
+│  │ • dotnet build      │ │ • ESLint               │  │
+│  │ • dotnet test       │ │ • TypeCheck (⚠️)       │  │
+│  │ • Code Coverage     │ │ • nuxt build           │  │
+│  │ • SonarCloud Analyze│ └────────────────────────┘  │
+│  │ • SonarCloud Publish│                             │
+│  └─────────────────────┘                             │
+└──────────────────────┬──────────────────────────────┘
+                       │ trigger
+┌──────────────────────▼──────────────────────────────┐
+│  CD Staging Pipeline (cd-staging.yml)                │
+│  ┌──────────────────┐                                │
+│  │ Stage 1: Docker  │ Agent ARM64 (self-hosted)      │
+│  │ • Build backend  │                                │
+│  │ • Build frontend │                                │
+│  │ • Push Docker Hub│                                │
+│  └────────┬─────────┘                                │
+│  ┌────────▼─────────┐                                │
+│  │ Stage 2: Deploy  │ Agent VPS (environment)        │
+│  │ • docker compose │                                │
+│  └────────┬─────────┘                                │
+│  ┌────────▼─────────┐                                │
+│  │ Stage 3: Quality │ Agent VPS (environment)        │
+│  │ • k6 load test   │                                │
+│  │ • ZAP baseline   │                                │
+│  │ • ZAP API scan   │                                │
+│  │ • Playwright E2E │                                │
+│  └──────────────────┘                                │
+└─────────────────────────────────────────────────────┘
+```
