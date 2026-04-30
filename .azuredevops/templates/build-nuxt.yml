@@ -10,9 +10,9 @@
 
 steps:
   - task: NodeTool@0
-    displayName: 'Setup Node.js 20'
+    displayName: 'Setup Node.js 22'
     inputs:
-      versionSpec: '20.x'
+      versionSpec: '22.x'
 
   - script: npm ci
     displayName: 'Install dependencies'
