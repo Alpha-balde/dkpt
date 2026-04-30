@@ -84,3 +84,23 @@ stages:
                 - checkout: self
 
                 - template: templates/deploy-vps.yml
+
+  # ============================================
+  # Stage 3 — Quality Gate (post-deploy)
+  # ============================================
+  - stage: QualityGate
+    displayName: 'Quality Gate'
+    dependsOn: DeployStaging
+    jobs:
+      - deployment: PostDeployTests
+        displayName: 'Post-Deploy Tests'
+        environment:
+          name: 'Staging'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - template: templates/quality-gate.yml

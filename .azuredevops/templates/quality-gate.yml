@@ -1,0 +1,50 @@
+# ============================================
+# DKPT — Azure DevOps : Template Quality Gate
+# ============================================
+# Tests post-déploiement exécutés sur le VPS staging.
+# Vérifie la performance, la sécurité et le fonctionnel
+# de l'application après déploiement.
+#
+# Exécuté par l'agent d'environnement (directement sur le VPS).
+# Portable : les mêmes outils (k6, ZAP, Playwright) seront
+# réutilisés sur GitHub Actions, GitLab CI et Bitbucket.
+#
+# Utilisé par : cd-staging.yml
+# ============================================
+
+steps:
+  # ============================================
+  # k6 — Load Testing
+  # ============================================
+  - script: |
+      echo "⚡ Checking k6 installation..."
+      if ! command -v k6 &> /dev/null; then
+        echo "⚡ Installing k6..."
+        K6_VERSION="v0.56.0"
+        curl -sL "https://github.com/grafana/k6/releases/download/${K6_VERSION}/k6-${K6_VERSION}-linux-arm64.tar.gz" \
+          | sudo tar xz -C /usr/local/bin --strip-components=1
+      fi
+      k6 version
+    displayName: 'Setup k6'
+
+  - script: |
+      SOURCES="$(System.DefaultWorkingDirectory)"
+      if [ ! -f "$SOURCES/tests/load/smoke-test.js" ]; then
+        SOURCES="$(Pipeline.Workspace)/s"
+      fi
+      echo "⚡ Running k6 smoke test..."
+      k6 run "$SOURCES/tests/load/smoke-test.js" \
+        --env BASE_URL=http://localhost \
+        --env TEST_USER_EMAIL="$(TEST_USER_EMAIL)" \
+        --env TEST_USER_PASSWORD="$(TEST_USER_PASSWORD)" \
+        --summary-export=k6-summary.json \
+        2>&1 | tee k6-output.txt
+      echo "⚡ k6 smoke test completed"
+    displayName: 'Load Test (k6)'
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish k6 Results'
+    inputs:
+      targetPath: 'k6-summary.json'
+      artifactName: 'k6-results'
+    condition: always()
