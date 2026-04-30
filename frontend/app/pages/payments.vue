@@ -112,9 +112,9 @@ const filteredMembers = computed(() => {
   const q = memberSearch.value.toLowerCase()
   return membersList.value
     .filter(m =>
-      m.prenom.toLowerCase().includes(q) ||
-      m.nom.toLowerCase().includes(q) ||
-      m.numeroMembre.toLowerCase().includes(q)
+      m.prenom.toLowerCase().includes(q)
+      || m.nom.toLowerCase().includes(q)
+      || m.numeroMembre.toLowerCase().includes(q)
     )
     .slice(0, 20)
 })
@@ -235,8 +235,12 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Paiements</h1>
-        <p class="text-sm text-gray-500 mt-1">Historique des transactions enregistrées.</p>
+        <h1 class="text-3xl font-bold text-gray-900">
+          Paiements
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">
+          Historique des transactions enregistrées.
+        </p>
       </div>
       <UButton
         v-if="canManagePayments"
@@ -276,20 +280,38 @@ onMounted(() => {
     <!-- Table desktop -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hidden lg:block">
       <div class="px-6 py-4 border-b border-gray-100">
-        <h3 class="text-lg font-semibold text-gray-900">Historique</h3>
-        <p class="text-xs text-gray-500">{{ data?.totalCount || 0 }} transactions trouvées</p>
+        <h3 class="text-lg font-semibold text-gray-900">
+          Historique
+        </h3>
+        <p class="text-xs text-gray-500">
+          {{ data?.totalCount || 0 }} transactions trouvées
+        </p>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Membre</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Année</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Montant</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Moyen / Réf</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Note</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Date
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Membre
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Année
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Montant
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Moyen / Réf
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Note
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -298,27 +320,41 @@ onMounted(() => {
               :key="p.id"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="px-4 py-3 text-gray-600">{{ p.datePaiement }}</td>
+              <td class="px-4 py-3 text-gray-600">
+                {{ p.datePaiement }}
+              </td>
               <td class="px-4 py-3">
-                <NuxtLink v-if="p.member" :to="`/members/${p.memberId}`" class="group">
+                <NuxtLink
+                  v-if="p.member"
+                  :to="`/members/${p.memberId}`"
+                  class="group"
+                >
                   <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                     {{ p.member.prenom }} {{ p.member.nom }}
                   </p>
                   <p class="text-xs text-gray-500">{{ p.member.numeroMembre }}</p>
                 </NuxtLink>
-                <span v-else class="text-gray-400">—</span>
+                <span
+                  v-else
+                  class="text-gray-400"
+                >—</span>
               </td>
               <td class="px-4 py-3">
                 <span class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-medium">
                   {{ p.annee }}
                 </span>
               </td>
-              <td class="px-4 py-3 font-bold text-gray-900">{{ p.montant.toLocaleString('fr-FR') }} GNF</td>
+              <td class="px-4 py-3 font-bold text-gray-900">
+                {{ p.montant.toLocaleString('fr-FR') }} GNF
+              </td>
               <td class="px-4 py-3">
                 <span :class="[methodBadge(p.moyenPaiement), 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium']">
                   {{ methodLabel(p.moyenPaiement) }}
                 </span>
-                <span v-if="p.reference" class="text-xs text-gray-400 ml-1">{{ p.reference }}</span>
+                <span
+                  v-if="p.reference"
+                  class="text-xs text-gray-400 ml-1"
+                >{{ p.reference }}</span>
               </td>
               <td class="px-4 py-3 text-gray-500 text-xs max-w-[200px] truncate">
                 {{ p.note || '—' }}
@@ -330,7 +366,10 @@ onMounted(() => {
                     title="Voir membre"
                     @click="navigateTo(`/members/${p.memberId}`)"
                   >
-                    <UIcon name="i-lucide-eye" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-eye"
+                      class="w-4 h-4"
+                    />
                   </button>
                   <button
                     v-if="canManagePayments"
@@ -338,7 +377,10 @@ onMounted(() => {
                     title="Modifier"
                     @click="openEditPayment(p)"
                   >
-                    <UIcon name="i-lucide-pencil" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-pencil"
+                      class="w-4 h-4"
+                    />
                   </button>
                   <button
                     v-if="canManagePayments"
@@ -346,18 +388,32 @@ onMounted(() => {
                     title="Supprimer"
                     @click="confirmDelete(p.id)"
                   >
-                    <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-trash-2"
+                      class="w-4 h-4"
+                    />
                   </button>
                 </div>
               </td>
             </tr>
             <tr v-if="status === 'pending'">
-              <td colspan="7" class="px-4 py-12 text-center">
-                <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400 mx-auto" />
+              <td
+                colspan="7"
+                class="px-4 py-12 text-center"
+              >
+                <UIcon
+                  name="i-lucide-loader-2"
+                  class="w-6 h-6 animate-spin text-gray-400 mx-auto"
+                />
               </td>
             </tr>
             <tr v-else-if="!data?.items?.length">
-              <td colspan="7" class="px-4 py-12 text-center text-gray-500">Aucun paiement trouvé</td>
+              <td
+                colspan="7"
+                class="px-4 py-12 text-center text-gray-500"
+              >
+                Aucun paiement trouvé
+              </td>
             </tr>
           </tbody>
         </table>
@@ -377,28 +433,56 @@ onMounted(() => {
             {{ methodLabel(p.moyenPaiement) }}
           </span>
         </div>
-        <NuxtLink v-if="p.member" :to="`/members/${p.memberId}`">
+        <NuxtLink
+          v-if="p.member"
+          :to="`/members/${p.memberId}`"
+        >
           <p class="font-medium text-gray-900">{{ p.member.prenom }} {{ p.member.nom }}</p>
           <p class="text-xs text-gray-500">{{ p.member.numeroMembre }}</p>
         </NuxtLink>
         <div class="flex items-center justify-between mt-2">
-          <p class="text-lg font-bold text-gray-900">{{ p.montant.toLocaleString('fr-FR') }} GNF</p>
+          <p class="text-lg font-bold text-gray-900">
+            {{ p.montant.toLocaleString('fr-FR') }} GNF
+          </p>
           <span class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium">{{ p.annee }}</span>
         </div>
-        <div v-if="canManagePayments" class="flex justify-end gap-1 mt-3 pt-3 border-t border-gray-100">
-          <button class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50" @click="openEditPayment(p)">
-            <UIcon name="i-lucide-pencil" class="w-4 h-4" />
+        <div
+          v-if="canManagePayments"
+          class="flex justify-end gap-1 mt-3 pt-3 border-t border-gray-100"
+        >
+          <button
+            class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+            @click="openEditPayment(p)"
+          >
+            <UIcon
+              name="i-lucide-pencil"
+              class="w-4 h-4"
+            />
           </button>
-          <button class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50" @click="confirmDelete(p.id)">
-            <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+          <button
+            class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50"
+            @click="confirmDelete(p.id)"
+          >
+            <UIcon
+              name="i-lucide-trash-2"
+              class="w-4 h-4"
+            />
           </button>
         </div>
       </div>
-      <div v-if="!data?.items?.length" class="py-12 text-center text-gray-500 text-sm">Aucun paiement trouvé</div>
+      <div
+        v-if="!data?.items?.length"
+        class="py-12 text-center text-gray-500 text-sm"
+      >
+        Aucun paiement trouvé
+      </div>
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex justify-center items-center gap-2">
+    <div
+      v-if="totalPages > 1"
+      class="flex justify-center items-center gap-2"
+    >
       <UButton
         variant="outline"
         color="neutral"
@@ -407,7 +491,12 @@ onMounted(() => {
         :disabled="page <= 1"
         @click="page = Math.max(1, page - 1)"
       />
-      <UPagination v-model:page="page" :total="data?.totalCount || 0" :items-per-page="pageSize" :show-controls="false" />
+      <UPagination
+        v-model:page="page"
+        :total="data?.totalCount || 0"
+        :items-per-page="pageSize"
+        :show-controls="false"
+      />
       <UButton
         variant="outline"
         color="neutral"
@@ -426,17 +515,34 @@ onMounted(() => {
         </h3>
       </template>
       <template #body>
-        <form class="space-y-4" @submit.prevent="savePayment">
+        <form
+          class="space-y-4"
+          @submit.prevent="savePayment"
+        >
           <!-- Member Search -->
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Membre *</label>
-            <div v-if="selectedMember" class="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2">
+            <div
+              v-if="selectedMember"
+              class="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2"
+            >
               <div>
-                <p class="text-sm font-medium text-blue-900">{{ selectedMember.prenom }} {{ selectedMember.nom }}</p>
-                <p class="text-xs text-blue-600">{{ selectedMember.numeroMembre }}</p>
+                <p class="text-sm font-medium text-blue-900">
+                  {{ selectedMember.prenom }} {{ selectedMember.nom }}
+                </p>
+                <p class="text-xs text-blue-600">
+                  {{ selectedMember.numeroMembre }}
+                </p>
               </div>
-              <button type="button" class="text-blue-400 hover:text-blue-600" @click="paymentForm.memberId = ''">
-                <UIcon name="i-lucide-x" class="w-4 h-4" />
+              <button
+                type="button"
+                class="text-blue-400 hover:text-blue-600"
+                @click="paymentForm.memberId = ''"
+              >
+                <UIcon
+                  name="i-lucide-x"
+                  class="w-4 h-4"
+                />
               </button>
             </div>
             <div v-else>
@@ -445,7 +551,10 @@ onMounted(() => {
                 placeholder="Rechercher un membre par nom ou numéro..."
                 icon="i-lucide-search"
               />
-              <div v-if="memberSearch && filteredMembers.length" class="mt-1 max-h-40 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-sm">
+              <div
+                v-if="memberSearch && filteredMembers.length"
+                class="mt-1 max-h-40 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-sm"
+              >
                 <button
                   v-for="m in filteredMembers"
                   :key="m.id"
@@ -463,22 +572,37 @@ onMounted(() => {
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Année *</label>
-              <UInput v-model.number="paymentForm.annee" type="number" required />
+              <UInput
+                v-model.number="paymentForm.annee"
+                type="number"
+                required
+              />
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Date *</label>
-              <UInput v-model="paymentForm.datePaiement" type="date" required />
+              <UInput
+                v-model="paymentForm.datePaiement"
+                type="date"
+                required
+              />
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Montant (GNF) *</label>
-              <UInput v-model.number="paymentForm.montant" type="number" required />
+              <UInput
+                v-model.number="paymentForm.montant"
+                type="number"
+                required
+              />
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Frais</label>
-              <UInput v-model.number="paymentForm.fraisPaiement" type="number" />
+              <UInput
+                v-model.number="paymentForm.fraisPaiement"
+                type="number"
+              />
             </div>
           </div>
 
@@ -497,18 +621,36 @@ onMounted(() => {
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Référence</label>
-              <UInput v-model="paymentForm.reference" placeholder="N° de reçu, référence..." />
+              <UInput
+                v-model="paymentForm.reference"
+                placeholder="N° de reçu, référence..."
+              />
             </div>
           </div>
 
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Note</label>
-            <UTextarea v-model="paymentForm.note" rows="2" placeholder="Commentaire libre..." />
+            <UTextarea
+              v-model="paymentForm.note"
+              rows="2"
+              placeholder="Commentaire libre..."
+            />
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <UButton variant="outline" type="button" @click="showPaymentModal = false">Annuler</UButton>
-            <UButton type="submit" :loading="saving" icon="i-lucide-save" class="bg-blue-600 hover:bg-blue-700">
+            <UButton
+              variant="outline"
+              type="button"
+              @click="showPaymentModal = false"
+            >
+              Annuler
+            </UButton>
+            <UButton
+              type="submit"
+              :loading="saving"
+              icon="i-lucide-save"
+              class="bg-blue-600 hover:bg-blue-700"
+            >
               {{ isEditing ? 'Modifier' : 'Enregistrer' }}
             </UButton>
           </div>
@@ -519,15 +661,28 @@ onMounted(() => {
     <!-- Delete Confirm Modal -->
     <UModal v-model:open="showDeleteConfirm">
       <template #header>
-        <h3 class="text-lg font-semibold text-red-600">Confirmer la suppression</h3>
+        <h3 class="text-lg font-semibold text-red-600">
+          Confirmer la suppression
+        </h3>
       </template>
       <template #body>
         <p class="text-sm text-gray-600">
           Êtes-vous sûr de vouloir supprimer ce paiement ? Cette action est irréversible.
         </p>
         <div class="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
-          <UButton variant="outline" @click="showDeleteConfirm = false">Annuler</UButton>
-          <UButton color="error" icon="i-lucide-trash-2" @click="deletePayment">Supprimer</UButton>
+          <UButton
+            variant="outline"
+            @click="showDeleteConfirm = false"
+          >
+            Annuler
+          </UButton>
+          <UButton
+            color="error"
+            icon="i-lucide-trash-2"
+            @click="deletePayment"
+          >
+            Supprimer
+          </UButton>
         </div>
       </template>
     </UModal>

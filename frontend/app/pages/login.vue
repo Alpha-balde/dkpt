@@ -34,24 +34,41 @@ async function onSubmit() {
     <div class="w-full max-w-md space-y-5">
       <div class="text-center space-y-3">
         <div class="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 ring-1 ring-blue-200 shadow-inner">
-          <UIcon name="i-lucide-shield-check" class="w-8 h-8 text-blue-600" />
+          <UIcon
+            name="i-lucide-shield-check"
+            class="w-8 h-8 text-blue-600"
+          />
         </div>
         <div>
-          <h1 class="text-3xl font-bold tracking-tight text-gray-900">DKPT</h1>
-          <p class="mt-1 text-sm text-gray-600">Diiwal Koïn Préfecture Tougué</p>
+          <h1 class="text-3xl font-bold tracking-tight text-gray-900">
+            DKPT
+          </h1>
+          <p class="mt-1 text-sm text-gray-600">
+            Diiwal Koïn Préfecture Tougué
+          </p>
         </div>
       </div>
 
       <UCard class="rounded-2xl shadow-xl ring-1 ring-gray-200/80">
         <template #header>
           <div class="text-center">
-            <h2 class="text-lg font-semibold text-gray-900">Connexion</h2>
-            <p class="mt-1 text-xs text-gray-500">Accedez a votre espace DKPT</p>
+            <h2 class="text-lg font-semibold text-gray-900">
+              Connexion
+            </h2>
+            <p class="mt-1 text-xs text-gray-500">
+              Accedez a votre espace DKPT
+            </p>
           </div>
         </template>
 
-        <form class="space-y-4" @submit.prevent="onSubmit">
-          <UFormField label="Email" required>
+        <form
+          class="space-y-4"
+          @submit.prevent="onSubmit"
+        >
+          <UFormField
+            label="Email"
+            required
+          >
             <UInput
               v-model="state.email"
               type="email"
@@ -65,7 +82,10 @@ async function onSubmit() {
             />
           </UFormField>
 
-          <UFormField label="Mot de passe" required>
+          <UFormField
+            label="Mot de passe"
+            required
+          >
             <UInput
               v-model="state.password"
               type="password"

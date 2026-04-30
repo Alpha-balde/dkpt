@@ -81,8 +81,12 @@ function onFilterChange() {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Cotisations</h1>
-        <p class="text-sm text-gray-500 mt-1">Suivi des cotisations – {{ subtitleYear }}</p>
+        <h1 class="text-3xl font-bold text-gray-900">
+          Cotisations
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">
+          Suivi des cotisations – {{ subtitleYear }}
+        </p>
       </div>
       <UButton
         v-if="canManagePayments"
@@ -121,19 +125,35 @@ function onFilterChange() {
     <!-- Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div class="px-6 py-4 border-b border-gray-100">
-        <h3 class="text-lg font-semibold text-gray-900">Historique</h3>
-        <p class="text-xs text-gray-500">{{ data?.totalCount || 0 }} résultats trouvés</p>
+        <h3 class="text-lg font-semibold text-gray-900">
+          Historique
+        </h3>
+        <p class="text-xs text-gray-500">
+          {{ data?.totalCount || 0 }} résultats trouvés
+        </p>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Membre</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Payé</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Attendu</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reste</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Statut</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Membre
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Payé
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Attendu
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Reste
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Statut
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -143,15 +163,22 @@ function onFilterChange() {
               class="hover:bg-gray-50 transition-colors"
             >
               <td class="px-4 py-3">
-                <NuxtLink :to="`/members/${row.id}`" class="group">
+                <NuxtLink
+                  :to="`/members/${row.id}`"
+                  class="group"
+                >
                   <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                     {{ row.prenom }} {{ row.nom }}
                   </p>
                   <p class="text-xs text-gray-500">{{ row.numeroMembre }}</p>
                 </NuxtLink>
               </td>
-              <td class="px-4 py-3 font-medium text-green-600">{{ row.paidAmount.toLocaleString('fr-FR') }} GNF</td>
-              <td class="px-4 py-3 text-gray-600">{{ row.expectedAmount.toLocaleString('fr-FR') }} GNF</td>
+              <td class="px-4 py-3 font-medium text-green-600">
+                {{ row.paidAmount.toLocaleString('fr-FR') }} GNF
+              </td>
+              <td class="px-4 py-3 text-gray-600">
+                {{ row.expectedAmount.toLocaleString('fr-FR') }} GNF
+              </td>
               <td class="px-4 py-3">
                 <span :class="row.gap > 0 ? 'font-bold text-red-600' : 'font-medium text-green-600'">
                   {{ row.gap.toLocaleString('fr-FR') }} GNF
@@ -177,16 +204,28 @@ function onFilterChange() {
                 >
                   Payer
                 </UButton>
-                <span v-else class="text-xs text-gray-400">—</span>
+                <span
+                  v-else
+                  class="text-xs text-gray-400"
+                >—</span>
               </td>
             </tr>
             <tr v-if="fetchStatus === 'pending'">
-              <td colspan="6" class="px-4 py-12 text-center">
-                <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400 mx-auto" />
+              <td
+                colspan="6"
+                class="px-4 py-12 text-center"
+              >
+                <UIcon
+                  name="i-lucide-loader-2"
+                  class="w-6 h-6 animate-spin text-gray-400 mx-auto"
+                />
               </td>
             </tr>
             <tr v-else-if="!data?.items?.length">
-              <td colspan="6" class="px-4 py-12 text-center text-gray-500">
+              <td
+                colspan="6"
+                class="px-4 py-12 text-center text-gray-500"
+              >
                 Aucun résultat trouvé
               </td>
             </tr>
@@ -196,7 +235,10 @@ function onFilterChange() {
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex justify-center items-center gap-2">
+    <div
+      v-if="totalPages > 1"
+      class="flex justify-center items-center gap-2"
+    >
       <UButton
         variant="outline"
         color="neutral"
@@ -205,7 +247,12 @@ function onFilterChange() {
         :disabled="page <= 1"
         @click="page = Math.max(1, page - 1)"
       />
-      <UPagination v-model:page="page" :total="data?.totalCount || 0" :items-per-page="pageSize" :show-controls="false" />
+      <UPagination
+        v-model:page="page"
+        :total="data?.totalCount || 0"
+        :items-per-page="pageSize"
+        :show-controls="false"
+      />
       <UButton
         variant="outline"
         color="neutral"

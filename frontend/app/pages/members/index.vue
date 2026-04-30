@@ -180,8 +180,12 @@ async function deleteMember() {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Membres</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ data?.totalCount || 0 }} membres enregistrés</p>
+        <h1 class="text-3xl font-bold text-gray-900">
+          Membres
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">
+          {{ data?.totalCount || 0 }} membres enregistrés
+        </p>
       </div>
       <UButton
         v-if="canManageMembers"
@@ -214,7 +218,11 @@ async function deleteMember() {
           label-key="label"
           placeholder="Statut"
         />
-        <UButton variant="soft" icon="i-lucide-search" @click="onSearch">
+        <UButton
+          variant="soft"
+          icon="i-lucide-search"
+          @click="onSearch"
+        >
           Rechercher
         </UButton>
       </div>
@@ -226,13 +234,27 @@ async function deleteMember() {
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">N°</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nom complet</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">Téléphone</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">Village</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">Année</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Statut</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                N°
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Nom complet
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">
+                Téléphone
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                Village
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                Année
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Statut
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -241,17 +263,26 @@ async function deleteMember() {
               :key="member.id"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ member.numeroMembre }}</td>
+              <td class="px-4 py-3 font-mono text-xs text-gray-500">
+                {{ member.numeroMembre }}
+              </td>
               <td class="px-4 py-3">
-                <NuxtLink :to="`/members/${member.id}`" class="group">
+                <NuxtLink
+                  :to="`/members/${member.id}`"
+                  class="group"
+                >
                   <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
                     {{ member.prenom }} {{ member.nom }}
                   </p>
                   <p class="text-xs text-gray-500">{{ member.residence || '—' }}</p>
                 </NuxtLink>
               </td>
-              <td class="px-4 py-3 text-gray-600 hidden sm:table-cell">{{ member.telephone || '—' }}</td>
-              <td class="px-4 py-3 text-gray-600 hidden md:table-cell">{{ member.village || '—' }}</td>
+              <td class="px-4 py-3 text-gray-600 hidden sm:table-cell">
+                {{ member.telephone || '—' }}
+              </td>
+              <td class="px-4 py-3 text-gray-600 hidden md:table-cell">
+                {{ member.village || '—' }}
+              </td>
               <td class="px-4 py-3 hidden lg:table-cell">
                 <span class="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs font-medium">{{ member.anneeDebut }}</span>
               </td>
@@ -272,7 +303,10 @@ async function deleteMember() {
                     title="Voir le profil"
                     @click="navigateTo(`/members/${member.id}`)"
                   >
-                    <UIcon name="i-lucide-eye" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-eye"
+                      class="w-4 h-4"
+                    />
                   </button>
                   <button
                     v-if="canManageMembers"
@@ -280,7 +314,10 @@ async function deleteMember() {
                     title="Modifier"
                     @click="openEditModal(member)"
                   >
-                    <UIcon name="i-lucide-pencil" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-pencil"
+                      class="w-4 h-4"
+                    />
                   </button>
                   <button
                     v-if="isAdmin"
@@ -288,18 +325,32 @@ async function deleteMember() {
                     title="Supprimer"
                     @click="confirmDelete(member)"
                   >
-                    <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-trash-2"
+                      class="w-4 h-4"
+                    />
                   </button>
                 </div>
               </td>
             </tr>
             <tr v-if="status === 'pending'">
-              <td colspan="7" class="px-4 py-12 text-center">
-                <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400 mx-auto" />
+              <td
+                colspan="7"
+                class="px-4 py-12 text-center"
+              >
+                <UIcon
+                  name="i-lucide-loader-2"
+                  class="w-6 h-6 animate-spin text-gray-400 mx-auto"
+                />
               </td>
             </tr>
             <tr v-else-if="!data?.items?.length">
-              <td colspan="7" class="px-4 py-12 text-center text-gray-500">Aucun membre trouvé</td>
+              <td
+                colspan="7"
+                class="px-4 py-12 text-center text-gray-500"
+              >
+                Aucun membre trouvé
+              </td>
             </tr>
           </tbody>
         </table>
@@ -307,7 +358,10 @@ async function deleteMember() {
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex justify-center items-center gap-2">
+    <div
+      v-if="totalPages > 1"
+      class="flex justify-center items-center gap-2"
+    >
       <UButton
         variant="outline"
         color="neutral"
@@ -316,7 +370,12 @@ async function deleteMember() {
         :disabled="page <= 1"
         @click="page = Math.max(1, page - 1)"
       />
-      <UPagination v-model:page="page" :total="data?.totalCount || 0" :items-per-page="pageSize" :show-controls="false" />
+      <UPagination
+        v-model:page="page"
+        :total="data?.totalCount || 0"
+        :items-per-page="pageSize"
+        :show-controls="false"
+      />
       <UButton
         variant="outline"
         color="neutral"
@@ -330,28 +389,46 @@ async function deleteMember() {
     <!-- CREATE MODAL -->
     <UModal v-model:open="showCreateModal">
       <template #header>
-        <h3 class="text-lg font-semibold text-gray-900">Nouveau membre</h3>
+        <h3 class="text-lg font-semibold text-gray-900">
+          Nouveau membre
+        </h3>
       </template>
       <template #body>
-        <form class="space-y-4 max-h-[70vh] overflow-y-auto pr-1" @submit.prevent="createMember">
+        <form
+          class="space-y-4 max-h-[70vh] overflow-y-auto pr-1"
+          @submit.prevent="createMember"
+        >
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">N° Membre *</label>
-              <UInput v-model="createForm.numeroMembre" placeholder="ID_0500" required />
+              <UInput
+                v-model="createForm.numeroMembre"
+                placeholder="ID_0500"
+                required
+              />
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Statut</label>
-              <USelect v-model="createForm.actif" :items="[{ label: 'Actif', value: true }, { label: 'Inactif', value: false }]" />
+              <USelect
+                v-model="createForm.actif"
+                :items="[{ label: 'Actif', value: true }, { label: 'Inactif', value: false }]"
+              />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Prénom *</label>
-              <UInput v-model="createForm.prenom" required />
+              <UInput
+                v-model="createForm.prenom"
+                required
+              />
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Nom *</label>
-              <UInput v-model="createForm.nom" required />
+              <UInput
+                v-model="createForm.nom"
+                required
+              />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -371,7 +448,12 @@ async function deleteMember() {
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Année d'adhésion</label>
-              <USelect v-model="createForm.anneeDebut" :items="yearOptions" value-key="value" label-key="label" />
+              <USelect
+                v-model="createForm.anneeDebut"
+                :items="yearOptions"
+                value-key="value"
+                label-key="label"
+              />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -385,8 +467,21 @@ async function deleteMember() {
             </div>
           </div>
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <UButton variant="outline" type="button" @click="showCreateModal = false">Annuler</UButton>
-            <UButton type="submit" :loading="creating" icon="i-lucide-save" class="bg-blue-600 hover:bg-blue-700">Enregistrer</UButton>
+            <UButton
+              variant="outline"
+              type="button"
+              @click="showCreateModal = false"
+            >
+              Annuler
+            </UButton>
+            <UButton
+              type="submit"
+              :loading="creating"
+              icon="i-lucide-save"
+              class="bg-blue-600 hover:bg-blue-700"
+            >
+              Enregistrer
+            </UButton>
           </div>
         </form>
       </template>
@@ -395,10 +490,15 @@ async function deleteMember() {
     <!-- EDIT MODAL -->
     <UModal v-model:open="showEditModal">
       <template #header>
-        <h3 class="text-lg font-semibold text-gray-900">Modifier le membre</h3>
+        <h3 class="text-lg font-semibold text-gray-900">
+          Modifier le membre
+        </h3>
       </template>
       <template #body>
-        <form class="space-y-4 max-h-[70vh] overflow-y-auto pr-1" @submit.prevent="updateMember">
+        <form
+          class="space-y-4 max-h-[70vh] overflow-y-auto pr-1"
+          @submit.prevent="updateMember"
+        >
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">N° Membre</label>
@@ -406,7 +506,10 @@ async function deleteMember() {
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Statut</label>
-              <USelect v-model="editForm.actif" :items="[{ label: 'Actif', value: true }, { label: 'Inactif', value: false }]" />
+              <USelect
+                v-model="editForm.actif"
+                :items="[{ label: 'Actif', value: true }, { label: 'Inactif', value: false }]"
+              />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -436,7 +539,12 @@ async function deleteMember() {
             </div>
             <div class="space-y-1">
               <label class="text-sm font-medium text-gray-700">Année d'adhésion</label>
-              <USelect v-model="editForm.anneeDebut" :items="yearOptions" value-key="value" label-key="label" />
+              <USelect
+                v-model="editForm.anneeDebut"
+                :items="yearOptions"
+                value-key="value"
+                label-key="label"
+              />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -450,8 +558,21 @@ async function deleteMember() {
             </div>
           </div>
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <UButton variant="outline" type="button" @click="showEditModal = false">Annuler</UButton>
-            <UButton type="submit" :loading="saving" icon="i-lucide-save" class="bg-blue-600 hover:bg-blue-700">Enregistrer</UButton>
+            <UButton
+              variant="outline"
+              type="button"
+              @click="showEditModal = false"
+            >
+              Annuler
+            </UButton>
+            <UButton
+              type="submit"
+              :loading="saving"
+              icon="i-lucide-save"
+              class="bg-blue-600 hover:bg-blue-700"
+            >
+              Enregistrer
+            </UButton>
           </div>
         </form>
       </template>
@@ -460,7 +581,9 @@ async function deleteMember() {
     <!-- DELETE CONFIRM -->
     <UModal v-model:open="showDeleteConfirm">
       <template #header>
-        <h3 class="text-lg font-semibold text-red-600">Confirmer la suppression</h3>
+        <h3 class="text-lg font-semibold text-red-600">
+          Confirmer la suppression
+        </h3>
       </template>
       <template #body>
         <p class="text-sm text-gray-600">
@@ -468,8 +591,19 @@ async function deleteMember() {
           Cette action est irréversible.
         </p>
         <div class="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
-          <UButton variant="outline" @click="showDeleteConfirm = false">Annuler</UButton>
-          <UButton color="error" icon="i-lucide-trash-2" @click="deleteMember">Supprimer</UButton>
+          <UButton
+            variant="outline"
+            @click="showDeleteConfirm = false"
+          >
+            Annuler
+          </UButton>
+          <UButton
+            color="error"
+            icon="i-lucide-trash-2"
+            @click="deleteMember"
+          >
+            Supprimer
+          </UButton>
         </div>
       </template>
     </UModal>

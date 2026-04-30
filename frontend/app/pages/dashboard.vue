@@ -110,7 +110,7 @@ const stats = computed(() => [
 const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
 const monthlyData = computed(() => {
   const data = new Array(12).fill(0)
-  allPayments.value?.items?.forEach(p => {
+  allPayments.value?.items?.forEach((p) => {
     const date = new Date(p.datePaiement)
     if (date.getFullYear() === selectedYear.value) {
       data[date.getMonth()] += p.montant
@@ -191,8 +191,12 @@ const participationRate = computed(() => {
     <!-- Header with year selector -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Tableau de bord</h1>
-        <p class="text-sm text-gray-500 mt-1">Vue d'ensemble des membres, cotisations et paiements.</p>
+        <h1 class="text-3xl font-bold text-gray-900">
+          Tableau de bord
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">
+          Vue d'ensemble des membres, cotisations et paiements.
+        </p>
       </div>
       <div class="w-32">
         <USelect
@@ -214,12 +218,24 @@ const participationRate = computed(() => {
       >
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm text-gray-500 font-medium">{{ stat.label }}</p>
-            <p class="text-3xl font-bold text-gray-900 mt-1">{{ stat.value }}</p>
-            <p v-if="stat.subtitle" class="text-sm text-gray-400 mt-1">{{ stat.subtitle }}</p>
+            <p class="text-sm text-gray-500 font-medium">
+              {{ stat.label }}
+            </p>
+            <p class="text-3xl font-bold text-gray-900 mt-1">
+              {{ stat.value }}
+            </p>
+            <p
+              v-if="stat.subtitle"
+              class="text-sm text-gray-400 mt-1"
+            >
+              {{ stat.subtitle }}
+            </p>
           </div>
           <div :class="[stat.iconBg, 'p-3 rounded-full']">
-            <UIcon :name="stat.icon" :class="[stat.iconColor, 'w-6 h-6']" />
+            <UIcon
+              :name="stat.icon"
+              :class="[stat.iconColor, 'w-6 h-6']"
+            />
           </div>
         </div>
       </div>
@@ -230,23 +246,33 @@ const participationRate = computed(() => {
       <!-- Bar Chart — Encaissements mensuels -->
       <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">Encaissements mensuels</h3>
+          <h3 class="text-lg font-semibold text-gray-900">
+            Encaissements mensuels
+          </h3>
           <span class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full font-medium">
             {{ selectedYear }}
           </span>
         </div>
         <div class="h-64">
-          <Bar :data="barChartData" :options="barChartOptions" />
+          <Bar
+            :data="barChartData"
+            :options="barChartOptions"
+          />
         </div>
       </div>
 
       <!-- Doughnut Chart — Répartition membres -->
       <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">Répartition des membres</h3>
+          <h3 class="text-lg font-semibold text-gray-900">
+            Répartition des membres
+          </h3>
         </div>
         <div class="h-64">
-          <Doughnut :data="doughnutData" :options="doughnutOptions" />
+          <Doughnut
+            :data="doughnutData"
+            :options="doughnutOptions"
+          />
         </div>
       </div>
     </div>
@@ -255,19 +281,37 @@ const participationRate = computed(() => {
     <div class="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl p-6 shadow-lg text-white">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
         <div>
-          <p class="text-sm text-blue-100 font-medium">Taux de participation</p>
-          <p class="text-3xl font-bold mt-1">{{ participationRate }}%</p>
-          <p class="text-xs text-blue-200 mt-1">{{ membresEnOrdre }} / {{ totalMembers }} membres</p>
+          <p class="text-sm text-blue-100 font-medium">
+            Taux de participation
+          </p>
+          <p class="text-3xl font-bold mt-1">
+            {{ participationRate }}%
+          </p>
+          <p class="text-xs text-blue-200 mt-1">
+            {{ membresEnOrdre }} / {{ totalMembers }} membres
+          </p>
         </div>
         <div>
-          <p class="text-sm text-blue-100 font-medium">Frais de paiement</p>
-          <p class="text-3xl font-bold mt-1">{{ totalFrais.toLocaleString('fr-FR') }}</p>
-          <p class="text-xs text-blue-200 mt-1">GNF collectés en frais</p>
+          <p class="text-sm text-blue-100 font-medium">
+            Frais de paiement
+          </p>
+          <p class="text-3xl font-bold mt-1">
+            {{ totalFrais.toLocaleString('fr-FR') }}
+          </p>
+          <p class="text-xs text-blue-200 mt-1">
+            GNF collectés en frais
+          </p>
         </div>
         <div>
-          <p class="text-sm text-blue-100 font-medium">Nombre de paiements</p>
-          <p class="text-3xl font-bold mt-1">{{ allPayments?.totalCount || 0 }}</p>
-          <p class="text-xs text-blue-200 mt-1">paiements en {{ selectedYear }}</p>
+          <p class="text-sm text-blue-100 font-medium">
+            Nombre de paiements
+          </p>
+          <p class="text-3xl font-bold mt-1">
+            {{ allPayments?.totalCount || 0 }}
+          </p>
+          <p class="text-xs text-blue-200 mt-1">
+            paiements en {{ selectedYear }}
+          </p>
         </div>
       </div>
     </div>
@@ -275,10 +319,18 @@ const participationRate = computed(() => {
     <!-- Recent Payments -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100">
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <h3 class="text-lg font-semibold text-gray-900">Derniers paiements</h3>
-        <NuxtLink to="/payments" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+        <h3 class="text-lg font-semibold text-gray-900">
+          Derniers paiements
+        </h3>
+        <NuxtLink
+          to="/payments"
+          class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+        >
           Voir tout
-          <UIcon name="i-lucide-arrow-right" class="w-4 h-4" />
+          <UIcon
+            name="i-lucide-arrow-right"
+            class="w-4 h-4"
+          />
         </NuxtLink>
       </div>
       <div class="divide-y divide-gray-100">
@@ -291,13 +343,18 @@ const participationRate = computed(() => {
             <p class="text-sm font-medium text-gray-900">
               {{ p.member?.prenom }} {{ p.member?.nom }}
             </p>
-            <p class="text-xs text-gray-500">{{ p.datePaiement }} — {{ p.moyenPaiement }}</p>
+            <p class="text-xs text-gray-500">
+              {{ p.datePaiement }} — {{ p.moyenPaiement }}
+            </p>
           </div>
           <span class="text-sm font-bold text-green-600">
             {{ p.montant.toLocaleString('fr-FR') }} GNF
           </span>
         </div>
-        <div v-if="!recentPayments?.items?.length" class="px-6 py-8 text-center text-sm text-gray-500">
+        <div
+          v-if="!recentPayments?.items?.length"
+          class="px-6 py-8 text-center text-sm text-gray-500"
+        >
           Aucun paiement récent
         </div>
       </div>

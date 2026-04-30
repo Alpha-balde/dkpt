@@ -69,8 +69,12 @@ function onFilterChange() {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Arriérés</h1>
-        <p class="text-sm text-gray-500 mt-1">Montants en retard à recouvrer {{ subtitleYear }}.</p>
+        <h1 class="text-3xl font-bold text-gray-900">
+          Arriérés
+        </h1>
+        <p class="text-sm text-gray-500 mt-1">
+          Montants en retard à recouvrer {{ subtitleYear }}.
+        </p>
       </div>
     </div>
 
@@ -78,12 +82,21 @@ function onFilterChange() {
     <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-xl p-6 shadow-lg text-white">
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm text-red-100 font-medium">Total arriéré{{ yearFilter > 0 ? ` (${yearFilter})` : '' }}</p>
-          <p class="text-4xl font-bold mt-1">{{ totalArriere.toLocaleString('fr-FR') }} GNF</p>
-          <p class="text-xs text-red-200 mt-1">{{ data?.totalCount || 0 }} membres en retard</p>
+          <p class="text-sm text-red-100 font-medium">
+            Total arriéré{{ yearFilter > 0 ? ` (${yearFilter})` : '' }}
+          </p>
+          <p class="text-4xl font-bold mt-1">
+            {{ totalArriere.toLocaleString('fr-FR') }} GNF
+          </p>
+          <p class="text-xs text-red-200 mt-1">
+            {{ data?.totalCount || 0 }} membres en retard
+          </p>
         </div>
         <div class="p-4 rounded-full bg-white/10">
-          <UIcon name="i-lucide-alert-circle" class="w-8 h-8 text-white" />
+          <UIcon
+            name="i-lucide-alert-circle"
+            class="w-8 h-8 text-white"
+          />
         </div>
       </div>
     </div>
@@ -113,12 +126,24 @@ function onFilterChange() {
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">N°</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Membre</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Montant dû</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Déjà payé</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reste</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                N°
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Membre
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Montant dû
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Déjà payé
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Reste
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -127,15 +152,26 @@ function onFilterChange() {
               :key="a.id"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="px-4 py-3 font-mono text-xs text-gray-500">{{ a.numeroMembre }}</td>
+              <td class="px-4 py-3 font-mono text-xs text-gray-500">
+                {{ a.numeroMembre }}
+              </td>
               <td class="px-4 py-3">
-                <NuxtLink :to="`/members/${a.id}`" class="group">
+                <NuxtLink
+                  :to="`/members/${a.id}`"
+                  class="group"
+                >
                   <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ a.prenom }} {{ a.nom }}</p>
                 </NuxtLink>
               </td>
-              <td class="px-4 py-3 text-gray-600">{{ a.expectedAmount.toLocaleString('fr-FR') }} GNF</td>
-              <td class="px-4 py-3 font-medium text-green-600">{{ a.paidAmount.toLocaleString('fr-FR') }} GNF</td>
-              <td class="px-4 py-3 font-bold text-red-600">{{ a.gap.toLocaleString('fr-FR') }} GNF</td>
+              <td class="px-4 py-3 text-gray-600">
+                {{ a.expectedAmount.toLocaleString('fr-FR') }} GNF
+              </td>
+              <td class="px-4 py-3 font-medium text-green-600">
+                {{ a.paidAmount.toLocaleString('fr-FR') }} GNF
+              </td>
+              <td class="px-4 py-3 font-bold text-red-600">
+                {{ a.gap.toLocaleString('fr-FR') }} GNF
+              </td>
               <td class="px-4 py-3 text-right">
                 <UButton
                   size="xs"
@@ -148,18 +184,34 @@ function onFilterChange() {
               </td>
             </tr>
             <tr v-if="fetchStatus === 'pending'">
-              <td colspan="6" class="px-4 py-12 text-center">
-                <UIcon name="i-lucide-loader-2" class="w-6 h-6 animate-spin text-gray-400 mx-auto" />
+              <td
+                colspan="6"
+                class="px-4 py-12 text-center"
+              >
+                <UIcon
+                  name="i-lucide-loader-2"
+                  class="w-6 h-6 animate-spin text-gray-400 mx-auto"
+                />
               </td>
             </tr>
             <tr v-else-if="!data?.items?.length">
-              <td colspan="6" class="px-4 py-12 text-center">
+              <td
+                colspan="6"
+                class="px-4 py-12 text-center"
+              >
                 <div class="max-w-sm mx-auto">
                   <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 mb-4">
-                    <UIcon name="i-lucide-party-popper" class="w-8 h-8 text-green-500" />
+                    <UIcon
+                      name="i-lucide-party-popper"
+                      class="w-8 h-8 text-green-500"
+                    />
                   </div>
-                  <p class="text-lg font-semibold text-gray-900">Aucun arriéré ! 🎉</p>
-                  <p class="text-sm text-gray-500 mt-1">Tous les membres sont à jour</p>
+                  <p class="text-lg font-semibold text-gray-900">
+                    Aucun arriéré ! 🎉
+                  </p>
+                  <p class="text-sm text-gray-500 mt-1">
+                    Tous les membres sont à jour
+                  </p>
                 </div>
               </td>
             </tr>
@@ -169,7 +221,10 @@ function onFilterChange() {
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex justify-center items-center gap-2">
+    <div
+      v-if="totalPages > 1"
+      class="flex justify-center items-center gap-2"
+    >
       <UButton
         variant="outline"
         color="neutral"
@@ -178,7 +233,12 @@ function onFilterChange() {
         :disabled="page <= 1"
         @click="page = Math.max(1, page - 1)"
       />
-      <UPagination v-model:page="page" :total="data?.totalCount || 0" :items-per-page="pageSize" :show-controls="false" />
+      <UPagination
+        v-model:page="page"
+        :total="data?.totalCount || 0"
+        :items-per-page="pageSize"
+        :show-controls="false"
+      />
       <UButton
         variant="outline"
         color="neutral"

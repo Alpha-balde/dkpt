@@ -129,10 +129,17 @@ async function deleteUser() {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div class="flex items-center gap-3">
-        <UIcon name="i-lucide-user-cog" class="w-8 h-8 text-gray-400" />
+        <UIcon
+          name="i-lucide-user-cog"
+          class="w-8 h-8 text-gray-400"
+        />
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Utilisateurs</h1>
-          <p class="text-sm text-gray-500 mt-1">Gestion des comptes et rôles</p>
+          <h1 class="text-3xl font-bold text-gray-900">
+            Utilisateurs
+          </h1>
+          <p class="text-sm text-gray-500 mt-1">
+            Gestion des comptes et rôles
+          </p>
         </div>
       </div>
       <UButton
@@ -153,10 +160,17 @@ async function deleteUser() {
         :class="[stat.bg, 'rounded-xl p-4 border border-gray-100 shadow-sm']"
       >
         <div class="flex items-center gap-3">
-          <UIcon :name="stat.icon" :class="[stat.iconColor, 'w-5 h-5']" />
+          <UIcon
+            :name="stat.icon"
+            :class="[stat.iconColor, 'w-5 h-5']"
+          />
           <div>
-            <p class="text-xs font-medium text-gray-500 uppercase">{{ stat.label }}</p>
-            <p :class="[stat.text, 'text-2xl font-bold']">{{ stat.value }}</p>
+            <p class="text-xs font-medium text-gray-500 uppercase">
+              {{ stat.label }}
+            </p>
+            <p :class="[stat.text, 'text-2xl font-bold']">
+              {{ stat.value }}
+            </p>
           </div>
         </div>
       </div>
@@ -168,11 +182,24 @@ async function deleteUser() {
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Rôle</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Permissions</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Créé le</th>
-              <th v-if="isAdmin" class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Email
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Rôle
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Permissions
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Créé le
+              </th>
+              <th
+                v-if="isAdmin"
+                class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider"
+              >
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
@@ -181,7 +208,9 @@ async function deleteUser() {
               :key="u.id"
               class="hover:bg-gray-50 transition-colors"
             >
-              <td class="px-4 py-3 font-medium text-gray-900">{{ u.email }}</td>
+              <td class="px-4 py-3 font-medium text-gray-900">
+                {{ u.email }}
+              </td>
               <td class="px-4 py-3">
                 <span :class="[roleBadgeClass[u.role] || 'bg-gray-100 text-gray-800', 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium']">
                   {{ u.role }}
@@ -190,22 +219,33 @@ async function deleteUser() {
               <td class="px-4 py-3 text-xs text-gray-500 max-w-[250px]">
                 {{ roleDescriptions[u.role] || '—' }}
               </td>
-              <td class="px-4 py-3 text-gray-600">{{ new Date(u.createdAt).toLocaleDateString('fr-FR') }}</td>
-              <td v-if="isAdmin" class="px-4 py-3">
+              <td class="px-4 py-3 text-gray-600">
+                {{ new Date(u.createdAt).toLocaleDateString('fr-FR') }}
+              </td>
+              <td
+                v-if="isAdmin"
+                class="px-4 py-3"
+              >
                 <div class="flex items-center justify-end gap-1">
                   <button
                     class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     title="Modifier le rôle"
                     @click="openEditModal(u)"
                   >
-                    <UIcon name="i-lucide-pencil" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-pencil"
+                      class="w-4 h-4"
+                    />
                   </button>
                   <button
                     class="h-8 w-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                     title="Supprimer"
                     @click="confirmDelete(u)"
                   >
-                    <UIcon name="i-lucide-trash-2" class="w-4 h-4" />
+                    <UIcon
+                      name="i-lucide-trash-2"
+                      class="w-4 h-4"
+                    />
                   </button>
                 </div>
               </td>
@@ -217,13 +257,21 @@ async function deleteUser() {
 
     <!-- Roles Info Box -->
     <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
-      <h3 class="text-sm font-semibold text-blue-900 mb-3">Description des rôles</h3>
+      <h3 class="text-sm font-semibold text-blue-900 mb-3">
+        Description des rôles
+      </h3>
       <div class="space-y-2">
-        <div v-for="(desc, role) in roleDescriptions" :key="role" class="flex items-start gap-2">
+        <div
+          v-for="(desc, role) in roleDescriptions"
+          :key="role"
+          class="flex items-start gap-2"
+        >
           <span :class="[roleBadgeClass[role], 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 mt-0.5']">
             {{ role }}
           </span>
-          <p class="text-sm text-blue-800">{{ desc }}</p>
+          <p class="text-sm text-blue-800">
+            {{ desc }}
+          </p>
         </div>
       </div>
     </div>
@@ -231,25 +279,56 @@ async function deleteUser() {
     <!-- CREATE MODAL -->
     <UModal v-model:open="showCreateModal">
       <template #header>
-        <h3 class="text-lg font-semibold text-gray-900">Nouvel utilisateur</h3>
+        <h3 class="text-lg font-semibold text-gray-900">
+          Nouvel utilisateur
+        </h3>
       </template>
       <template #body>
-        <form class="space-y-4" @submit.prevent="createUser">
+        <form
+          class="space-y-4"
+          @submit.prevent="createUser"
+        >
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Email *</label>
-            <UInput v-model="createForm.email" type="email" placeholder="utilisateur@dkpt.com" required />
+            <UInput
+              v-model="createForm.email"
+              type="email"
+              placeholder="utilisateur@dkpt.com"
+              required
+            />
           </div>
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Mot de passe *</label>
-            <UInput v-model="createForm.password" type="password" placeholder="Min. 8 caractères" required />
+            <UInput
+              v-model="createForm.password"
+              type="password"
+              placeholder="Min. 8 caractères"
+              required
+            />
           </div>
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Rôle</label>
-            <USelect v-model="createForm.role" :items="roleItems" />
+            <USelect
+              v-model="createForm.role"
+              :items="roleItems"
+            />
           </div>
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <UButton variant="outline" type="button" @click="showCreateModal = false">Annuler</UButton>
-            <UButton type="submit" :loading="creating" icon="i-lucide-save" class="bg-blue-600 hover:bg-blue-700">Créer</UButton>
+            <UButton
+              variant="outline"
+              type="button"
+              @click="showCreateModal = false"
+            >
+              Annuler
+            </UButton>
+            <UButton
+              type="submit"
+              :loading="creating"
+              icon="i-lucide-save"
+              class="bg-blue-600 hover:bg-blue-700"
+            >
+              Créer
+            </UButton>
           </div>
         </form>
       </template>
@@ -258,7 +337,9 @@ async function deleteUser() {
     <!-- EDIT MODAL -->
     <UModal v-model:open="showEditModal">
       <template #header>
-        <h3 class="text-lg font-semibold text-gray-900">Modifier le rôle</h3>
+        <h3 class="text-lg font-semibold text-gray-900">
+          Modifier le rôle
+        </h3>
       </template>
       <template #body>
         <div class="space-y-4">
@@ -267,11 +348,26 @@ async function deleteUser() {
           </p>
           <div class="space-y-1">
             <label class="text-sm font-medium text-gray-700">Rôle</label>
-            <USelect v-model="editForm.role" :items="roleItems" />
+            <USelect
+              v-model="editForm.role"
+              :items="roleItems"
+            />
           </div>
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <UButton variant="outline" @click="showEditModal = false">Annuler</UButton>
-            <UButton :loading="saving" icon="i-lucide-save" class="bg-blue-600 hover:bg-blue-700" @click="updateUser">Enregistrer</UButton>
+            <UButton
+              variant="outline"
+              @click="showEditModal = false"
+            >
+              Annuler
+            </UButton>
+            <UButton
+              :loading="saving"
+              icon="i-lucide-save"
+              class="bg-blue-600 hover:bg-blue-700"
+              @click="updateUser"
+            >
+              Enregistrer
+            </UButton>
           </div>
         </div>
       </template>
@@ -280,7 +376,9 @@ async function deleteUser() {
     <!-- DELETE CONFIRM -->
     <UModal v-model:open="showDeleteConfirm">
       <template #header>
-        <h3 class="text-lg font-semibold text-red-600">Confirmer la suppression</h3>
+        <h3 class="text-lg font-semibold text-red-600">
+          Confirmer la suppression
+        </h3>
       </template>
       <template #body>
         <p class="text-sm text-gray-600">
@@ -288,8 +386,19 @@ async function deleteUser() {
           Cette action est irréversible.
         </p>
         <div class="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
-          <UButton variant="outline" @click="showDeleteConfirm = false">Annuler</UButton>
-          <UButton color="error" icon="i-lucide-trash-2" @click="deleteUser">Supprimer</UButton>
+          <UButton
+            variant="outline"
+            @click="showDeleteConfirm = false"
+          >
+            Annuler
+          </UButton>
+          <UButton
+            color="error"
+            icon="i-lucide-trash-2"
+            @click="deleteUser"
+          >
+            Supprimer
+          </UButton>
         </div>
       </template>
     </UModal>
