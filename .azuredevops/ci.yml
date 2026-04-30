@@ -41,10 +41,10 @@ stages:
       - job: BackendTest
         displayName: 'Backend — Build, Test & SonarCloud'
         steps:
-          - task: SonarCloudPrepare@3
+          - task: SonarQubePrepare@7
             displayName: 'SonarCloud — Prepare'
             inputs:
-              SonarCloud: 'sonarcloud-connection'
+              SonarQube: 'sonarcloud-connection'
               organization: '$(SONAR_ORGANIZATION)'
               scannerMode: 'dotnet'
               projectKey: '$(SONAR_PROJECT_KEY)'
@@ -52,10 +52,10 @@ stages:
 
           - template: templates/build-dotnet.yml
 
-          - task: SonarCloudAnalyze@3
+          - task: SonarQubeAnalyze@7
             displayName: 'SonarCloud — Analyze'
 
-          - task: SonarCloudPublish@3
+          - task: SonarQubePublish@7
             displayName: 'SonarCloud — Publish Quality Gate'
             inputs:
               pollingTimeoutSec: '300'
