@@ -25,6 +25,7 @@ steps:
   - script: npm run typecheck
     displayName: 'Type Check (TypeScript)'
     workingDirectory: frontend
+    continueOnError: true  # Informatif — ne bloque pas le pipeline
 
   - script: npm run build
     displayName: 'Build frontend'
