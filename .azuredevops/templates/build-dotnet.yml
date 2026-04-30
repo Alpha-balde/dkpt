@@ -24,8 +24,8 @@ steps:
     displayName: 'Build backend'
     workingDirectory: backend
 
-  - script: dotnet test --no-build --configuration Release --verbosity minimal --logger "trx;LogFileName=test-results.trx"
-    displayName: 'Run tests'
+  - script: dotnet test --no-build --configuration Release --verbosity minimal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+    displayName: 'Run tests with coverage'
     workingDirectory: backend
 
   - task: PublishTestResults@2
@@ -34,4 +34,10 @@ steps:
       testResultsFormat: 'VSTest'
       testResultsFiles: '**/test-results.trx'
       failTaskOnFailedTests: true
+    condition: always()
+
+  - task: PublishCodeCoverageResults@2
+    displayName: 'Publish Code Coverage'
+    inputs:
+      summaryFileLocation: '**/coverage.cobertura.xml'
     condition: always()
