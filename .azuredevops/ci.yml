@@ -41,6 +41,8 @@ stages:
       - job: BackendTest
         displayName: 'Backend — Build, Test & SonarCloud'
         steps:
+          - checkout: self
+            fetchDepth: 0  # NE PAS LIMITER la profondeur de clonage
           - task: SonarCloudPrepare@3
             displayName: 'SonarCloud — Prepare'
             inputs:
