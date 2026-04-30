@@ -94,23 +94,26 @@ Enrichir le pipeline CI/CD avec 5 catégories de vérifications :
 
 ---
 
-## Phase 2 — SonarCloud (en cours)
+## Phase 2 — SonarCloud
 
 **Fichier modifié** : `.azuredevops/ci.yml`
 
 **Changements** :
 - Ajout du variable group `dkpt-secrets` (contient `SONAR_PROJECT_KEY` et `SONAR_ORGANIZATION`)
+- Ajout de `checkout: self` avec `fetchDepth: 0` pour le clone complet (requis par SonarCloud)
 - 3 tasks SonarCloud autour du template backend : `Prepare` → build → `Analyze` → `Publish`
 
-### Configuration manuelle préalable (Azure DevOps UI)
+### Configuration manuelle préalable (Azure DevOps UI + SonarCloud)
 
-| # | Action | Chemin dans l'UI |
-|:-:|--------|-----------------|
-| 1 | Créer un compte SonarCloud | [sonarcloud.io](https://sonarcloud.io) → login GitHub → importer projet |
-| 2 | Générer un token SonarCloud | My Account → Security → Generate Token |
-| 3 | Créer la service connection | Project Settings → Service connections → SonarQube Cloud |
-| 4 | Ajouter `SONAR_PROJECT_KEY` dans dkpt-secrets | Pipelines → Library → dkpt-secrets |
-| 5 | Ajouter `SONAR_ORGANIZATION` dans dkpt-secrets | Pipelines → Library → dkpt-secrets |
+| # | Action | Chemin dans l'UI | Fait ? |
+|:-:|--------|-----------------|:------:|
+| 1 | Installer l'extension SonarCloud | VS Marketplace → "SonarQube Cloud" → Get it free | ✅ |
+| 2 | Créer un compte SonarCloud | [sonarcloud.io](https://sonarcloud.io) → login GitHub → importer projet | ✅ |
+| 3 | Générer un token SonarCloud | My Account → Security → Generate Token | ✅ |
+| 4 | Créer la service connection (type **SonarCloud**, pas Generic) | Project Settings → Service connections → New → SonarCloud | ✅ |
+| 5 | Ajouter `SONAR_PROJECT_KEY` dans dkpt-secrets | Pipelines → Library → dkpt-secrets | ✅ |
+| 6 | Ajouter `SONAR_ORGANIZATION` dans dkpt-secrets (**minuscules**) | Pipelines → Library → dkpt-secrets | ✅ |
+| 7 | Permissions SonarCloud (Execute Analysis + Browse) | sonarcloud.io → Organization → Permissions | ✅ |
 
 #### Problème n°4 — Extension SonarCloud non installée
 
@@ -122,7 +125,74 @@ Enrichir le pipeline CI/CD avec 5 catégories de vérifications :
 
 > **Point de comparaison pour le mémoire** : Azure DevOps est la seule plateforme parmi les 4 qui exige une installation préalable d'extensions via l'UI admin pour utiliser des outils tiers. Les 3 autres permettent de référencer directement l'outil dans le YAML (GitHub: `uses:`, GitLab: `image:`, Bitbucket: `pipe:`).
 
-**Commit** : `a59dd24` — `ci: integrate SonarCloud analysis in CI pipeline (Phase 2)`
+#### Problème n°5 — Service connection de type "Generic" au lieu de "SonarCloud"
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `Step SonarCloudPrepare input SonarQube expects a service connection of type sonarcloud but the provided service connection sonarcloud-connection is of type generic.` |
+| **Cause** | La service connection avait été créée avant l'installation de l'extension SonarCloud. Le type "SonarCloud" n'était pas encore disponible dans la liste, donc le type "Generic" avait été choisi par défaut. |
+| **Solution** | Supprimer la service connection existante, puis la recréer en sélectionnant le type **"SonarCloud"** (disponible uniquement après installation de l'extension). |
+
+> **Leçon apprise** : L'ordre des opérations est important sur Azure DevOps : installer l'extension **avant** de créer la service connection.
+
+#### Problème n°6 — Organisation SonarCloud en majuscules
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `Downloading from https://sonarcloud.io/api/qualityprofiles/search?defaults=true&organization=Alpha-balde failed. Http status code is NotFound.` |
+| **Cause** | La variable `SONAR_ORGANIZATION` contenait `Alpha-balde` (majuscule A). SonarCloud exige des identifiants d'organisation en **minuscules**. |
+| **Solution** | Changer la variable dans dkpt-secrets : `Alpha-balde` → `alpha-balde` |
+
+#### Problème n°7 — Confusion entre tasks SonarCloud et SonarQube Server
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `A task is missing. The pipeline references a task called 'SonarQubePrepare'.` |
+| **Cause** | Tentative de migration vers les tasks `SonarQubePrepare@7` / `SonarQubeAnalyze@7` / `SonarQubePublish@7`, qui sont les tasks de **SonarQube Server** (on-premise), pas de **SonarCloud** (SaaS). Ce sont deux extensions séparées dans le Marketplace. |
+| **Solution** | Revenir aux tasks `SonarCloudPrepare@3` / `SonarCloudAnalyze@3` / `SonarCloudPublish@3` qui correspondent à l'extension SonarCloud installée. |
+
+> **Point de comparaison pour le mémoire** : SonarSource maintient deux extensions Azure DevOps distinctes (SonarQube Server et SonarCloud) avec des noms de tasks différents. C'est une source de confusion documentée. Les autres plateformes n'ont pas ce problème car elles utilisent des conteneurs Docker ou des actions unifiées.
+
+#### Problème n°8 — 403 sur l'API Quality Gate
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `API GET '/api/qualitygates/project_status' failed. Error message: Request failed with status code 403.` |
+| **Cause** | Permissions insuffisantes sur SonarCloud. L'utilisateur n'avait pas les droits "Execute Analysis" et "Browse" au niveau de l'organisation et du projet. |
+| **Impact** | L'analyse SonarCloud fonctionne (résultats visibles sur sonarcloud.io), mais le Quality Gate ne peut pas être publié dans Azure DevOps. |
+| **Solution temporaire** | `continueOnError: true` sur la task `SonarCloudPublish@3` → le pipeline continue avec un ⚠️ |
+| **Solution définitive** | Vérifier les permissions au niveau projet (Administration → Permissions → Browse + Execute Analysis) et potentiellement regénérer le token. |
+
+#### Problème n°9 — Shallow clone incompatible avec SonarCloud
+
+| Aspect | Détail |
+|--------|--------|
+| **Warning** | `Shallow clone detected during the analysis. Some files will miss SCM information.` |
+| **Cause** | Par défaut, Azure DevOps fait un clone superficiel (shallow clone) pour accélérer le checkout. SonarCloud a besoin de l'historique Git complet pour l'attribution des issues et le calcul des métriques sur le nouveau code. |
+| **Solution** | Ajout de `checkout: self` avec `fetchDepth: 0` dans le job BackendTest |
+
+> **Spécificité Azure DevOps** : Le `fetchDepth` par défaut est `1` (shallow clone) sur Azure DevOps. Sur GitHub Actions, c'est aussi `1` par défaut (`fetch-depth: 0` dans `actions/checkout@v4`). Sur GitLab CI, le clone est complet par défaut (`GIT_DEPTH: 0`).
+
+#### Problème n°10 — PR merge ref introuvable
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `fatal: couldn't find remote ref refs/pull/30/merge` |
+| **Cause** | Azure DevOps essayait de checkout une ref de PR GitHub (`refs/pull/30/merge`) qui n'existait pas (PR non synchronisée ou merge ref non générée). |
+| **Solution** | Lancer le pipeline directement sur la branche `feature/ci-quality-gates` (Run pipeline → sélectionner la branche, pas le PR). |
+
+### Résultat Phase 2
+
+| Step | Statut | Détail |
+|------|:------:|--------|
+| SonarCloud Prepare | ✅ | Analyse configurée |
+| SonarCloud Analyze | ✅ | Résultats envoyés à sonarcloud.io |
+| SonarCloud Publish | ⚠️ | 403 — `continueOnError: true`, résultats visibles sur sonarcloud.io |
+
+**Commits** :
+- `a59dd24` — `ci: integrate SonarCloud analysis in CI pipeline (Phase 2)`
+- `cd0427e` — `ci: upgrade SonarCloud tasks v3 → SonarQube v7` (revert ensuite)
+- `38ad2f5` — `fix: revert to SonarCloudPrepare@3 + continueOnError on Publish`
 
 ---
 
@@ -143,7 +213,23 @@ Enrichir le pipeline CI/CD avec 5 catégories de vérifications :
 
 | # | Action | Quand | Fait ? |
 |:-:|--------|-------|:------:|
-| 1 | Installer l'extension SonarCloud depuis le Marketplace | Avant Phase 2 | 🔄 |
+| 1 | Installer l'extension SonarCloud depuis le Marketplace | Avant Phase 2 | ✅ |
 | 2 | Créer un compte SonarCloud + importer le projet | Avant Phase 2 | ✅ |
-| 3 | Créer la service connection `sonarcloud-connection` | Avant Phase 2 | ✅ |
-| 4 | Ajouter variables SONAR_* dans `dkpt-secrets` | Avant Phase 2 | ✅ |
+| 3 | Créer la service connection `sonarcloud-connection` (type SonarCloud) | Avant Phase 2 | ✅ |
+| 4 | Ajouter variables `SONAR_*` dans `dkpt-secrets` (org en minuscules) | Avant Phase 2 | ✅ |
+| 5 | Permissions SonarCloud : Execute Analysis + Browse | Avant Phase 2 | ✅ |
+
+## Récapitulatif des problèmes rencontrés
+
+| # | Phase | Problème | Type |
+|:-:|:-----:|----------|------|
+| 1 | 1 | `Object.groupBy` non supporté (Node 20) | Compatibilité runtime |
+| 2 | 1 | 377 erreurs ESLint de formatage | Dette technique |
+| 3 | 1 | TypeCheck échoue sur code préexistant | Dette technique |
+| 4 | 2 | Extension SonarCloud non installée | Spécificité Azure DevOps |
+| 5 | 2 | Service connection mauvais type (Generic vs SonarCloud) | Configuration UI |
+| 6 | 2 | Organisation SonarCloud en majuscules | Case sensitivity |
+| 7 | 2 | Confusion tasks SonarCloud vs SonarQube Server | Naming/Documentation |
+| 8 | 2 | 403 sur API Quality Gate | Permissions |
+| 9 | 2 | Shallow clone incompatible avec SonarCloud | Configuration par défaut |
+| 10 | 2 | PR merge ref introuvable | Synchronisation GitHub ↔ Azure DevOps |
