@@ -27,8 +27,7 @@ export function useAuth() {
       token.value = data.token
       user.value = { email: data.email, role: data.role }
       return true
-    }
-    catch {
+    } catch {
       return false
     }
   }
@@ -47,8 +46,7 @@ export function useAuth() {
         email: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || '',
         role: payload['role'] || 'Lecteur'
       }
-    }
-    catch {
+    } catch {
       token.value = null
     }
   }
