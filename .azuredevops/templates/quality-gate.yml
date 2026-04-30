@@ -48,3 +48,43 @@ steps:
       targetPath: 'k6-summary.json'
       artifactName: 'k6-results'
     condition: always()
+
+  # ============================================
+  # OWASP ZAP — Security Scanning (DAST)
+  # ============================================
+  - script: |
+      echo "🛡️ Running OWASP ZAP baseline scan..."
+      mkdir -p zap-reports
+      docker run --rm --network host \
+        -v $(pwd)/zap-reports:/zap/wrk:rw \
+        ghcr.io/zaproxy/zaproxy:stable \
+        zap-baseline.py \
+          -t http://localhost \
+          -r zap-baseline-report.html \
+          -J zap-baseline-report.json \
+          -I
+      echo "🛡️ Baseline scan completed"
+    displayName: 'Security Scan — Baseline (OWASP ZAP)'
+    continueOnError: true
+
+  - script: |
+      echo "🛡️ Running OWASP ZAP API scan..."
+      docker run --rm --network host \
+        -v $(pwd)/zap-reports:/zap/wrk:rw \
+        ghcr.io/zaproxy/zaproxy:stable \
+        zap-api-scan.py \
+          -t http://localhost/swagger/v1/swagger.json \
+          -f openapi \
+          -r zap-api-report.html \
+          -J zap-api-report.json \
+          -I
+      echo "🛡️ API scan completed"
+    displayName: 'Security Scan — API (OWASP ZAP)'
+    continueOnError: true
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish ZAP Security Reports'
+    inputs:
+      targetPath: 'zap-reports'
+      artifactName: 'zap-security-reports'
+    condition: always()
