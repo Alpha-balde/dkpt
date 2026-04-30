@@ -24,8 +24,11 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  dotnetVersion: '9.0.x'
-  nodeVersion: '20'
+  - group: dkpt-secrets
+  - name: dotnetVersion
+    value: '9.0.x'
+  - name: nodeVersion
+    value: '20'
 
 stages:
   # ============================================
@@ -36,9 +39,26 @@ stages:
     jobs:
       # ---- Backend (.NET 9) ----
       - job: BackendTest
-        displayName: 'Backend — Build & Test'
+        displayName: 'Backend — Build, Test & SonarCloud'
         steps:
+          - task: SonarCloudPrepare@3
+            displayName: 'SonarCloud — Prepare'
+            inputs:
+              SonarCloud: 'sonarcloud-connection'
+              organization: '$(SONAR_ORGANIZATION)'
+              scannerMode: 'dotnet'
+              projectKey: '$(SONAR_PROJECT_KEY)'
+              projectName: 'DKPT'
+
           - template: templates/build-dotnet.yml
+
+          - task: SonarCloudAnalyze@3
+            displayName: 'SonarCloud — Analyze'
+
+          - task: SonarCloudPublish@3
+            displayName: 'SonarCloud — Publish Quality Gate'
+            inputs:
+              pollingTimeoutSec: '300'
 
       # ---- Frontend (Nuxt 4) ----
       - job: FrontendBuild
