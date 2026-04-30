@@ -20,10 +20,18 @@ steps:
     displayName: 'Restore dependencies'
     workingDirectory: backend
 
-  - script: dotnet build --no-restore --configuration Release
+  - script: dotnet build --no-restore --configuration Release /p:TreatWarningsAsErrors=true
     displayName: 'Build backend'
     workingDirectory: backend
 
-  - script: dotnet test --no-build --configuration Release --verbosity minimal
+  - script: dotnet test --no-build --configuration Release --verbosity minimal --logger "trx;LogFileName=test-results.trx"
     displayName: 'Run tests'
     workingDirectory: backend
+
+  - task: PublishTestResults@2
+    displayName: 'Publish Test Results'
+    inputs:
+      testResultsFormat: 'VSTest'
+      testResultsFiles: '**/test-results.trx'
+      failTaskOnFailedTests: true
+    condition: always()
