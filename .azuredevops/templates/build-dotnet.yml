@@ -9,7 +9,7 @@
 # C'est l'équivalent des "reusable workflows" de GitHub Actions
 # ou des "include:" de GitLab CI.
 #
-# Cache : NuGet packages et SonarCloud scanner
+# Cache : NuGet packages
 # (utile sur agents Microsoft-hosted, VM détruite après chaque run)
 # ============================================
 
@@ -29,15 +29,6 @@ steps:
       path: '$(NUGET_PACKAGES)'
     env:
       NUGET_PACKAGES: $(Pipeline.Workspace)/.nuget/packages
-
-  # Cache SonarCloud scanner
-  - task: Cache@2
-    displayName: 'Cache SonarCloud'
-    inputs:
-      key: 'sonar | "$(Agent.OS)"'
-      path: '$(Pipeline.Workspace)/.sonar/cache'
-    env:
-      SONAR_USER_HOME: $(Pipeline.Workspace)/.sonar
 
   - script: dotnet restore
     displayName: 'Restore dependencies'
