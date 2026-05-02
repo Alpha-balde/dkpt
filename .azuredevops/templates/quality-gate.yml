@@ -99,7 +99,7 @@ steps:
       fi
       echo "🧪 Installing Playwright..."
       cd "$SOURCES/tests/e2e"
-      npm ci
+      npm install --prefer-offline
       npx playwright install --with-deps chromium
     displayName: 'Setup Playwright'
 
