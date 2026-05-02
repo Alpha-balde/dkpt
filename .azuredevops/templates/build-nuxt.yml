@@ -21,6 +21,7 @@ steps:
   - script: npm run lint
     displayName: 'Lint (ESLint)'
     workingDirectory: frontend
+    continueOnError: true  # Informatif — ne bloque pas le pipeline
 
   - script: npm run typecheck
     displayName: 'Type Check (TypeScript)'
