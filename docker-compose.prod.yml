@@ -40,6 +40,7 @@ services:
       Jwt__Issuer: ${Jwt__Issuer}
       Jwt__Audience: ${Jwt__Audience}
       Cors__Origins: ${Cors__Origins}
+      ApplicationInsights__ConnectionString: ${ApplicationInsights__ConnectionString}
     depends_on:
       db:
         condition: service_healthy

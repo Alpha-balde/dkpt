@@ -11,6 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 // === Infrastructure (EF Core, Repositories, Services) ===
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// === Azure Application Insights ===
+builder.Services.AddApplicationInsightsTelemetry();
+
 // === JWT Authentication ===
 var jwtKey = builder.Configuration["Jwt:SecretKey"]
     ?? throw new InvalidOperationException("Jwt:SecretKey is required");

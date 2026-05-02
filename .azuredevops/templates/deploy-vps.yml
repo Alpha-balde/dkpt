@@ -48,6 +48,7 @@ steps:
       export JWT_AUDIENCE="$(JWT_AUDIENCE)"
       export CORS_ORIGINS="$(CORS_ORIGINS)"
       export NUXT_PUBLIC_API_BASE="$(NUXT_PUBLIC_API_BASE)"
+      export APPLICATIONINSIGHTS_CONNECTION_STRING="$(APPLICATIONINSIGHTS_CONNECTION_STRING)"
       bash /opt/dkpt/scripts/generate-env.sh
     displayName: 'Generate .env file'
 
