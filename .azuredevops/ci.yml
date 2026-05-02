@@ -2,6 +2,7 @@
 # DKPT — Azure DevOps : Pipeline CI
 # ============================================
 # Build & Test du backend (.NET 9) et du frontend (Nuxt 4)
+# puis Docker build & push (tag sha) sur agent ARM64
 # Déclenché sur push vers main
 #
 # Note : Ce fichier doit être enregistré manuellement dans l'UI
@@ -20,22 +21,25 @@ trigger:
       - README.md
       - docs/**
 
-pool:
-  vmImage: ubuntu-latest
-
 variables:
   - group: dkpt-secrets
   - name: dotnetVersion
     value: '9.0.x'
   - name: nodeVersion
     value: '20'
+  - name: dockerBackendImage
+    value: '$(DOCKERHUB_USERNAME)/dkpt-backend'
+  - name: dockerFrontendImage
+    value: '$(DOCKERHUB_USERNAME)/dkpt-frontend'
 
 stages:
   # ============================================
-  # Stage — Build & Test
+  # Stage 1 — Build & Test
   # ============================================
   - stage: BuildTest
     displayName: 'Build & Test'
+    pool:
+      vmImage: ubuntu-latest
     jobs:
       # ---- Backend (.NET 9) ----
       - job: BackendTest
@@ -68,3 +72,16 @@ stages:
         displayName: 'Frontend — Build'
         steps:
           - template: templates/build-nuxt.yml
+
+  # ============================================
+  # Stage 2 — Docker Build & Push
+  # ============================================
+  - stage: Docker
+    displayName: 'Docker Build & Push'
+    dependsOn: BuildTest
+    pool: Default  # Agent self-hosted ARM64
+    jobs:
+      - job: BuildPush
+        displayName: 'Build & Push Images'
+        steps:
+          - template: templates/build-docker.yml

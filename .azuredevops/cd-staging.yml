@@ -1,32 +1,30 @@
 # ============================================
 # DKPT — Azure DevOps : Pipeline CD Staging
 # ============================================
-# Docker build & push (tag :staging) + deploy sur VPS staging
-# Déclenché après succès du pipeline CI sur develop
+# Deploy sur VPS staging + Quality Gate
+# Déclenché après succès du pipeline CI sur main
 #
-# Architecture :
-#   Stage 1 (Docker) : Agent self-hosted DKPT-ARM64 (pool Default)
-#                      → Build natif ARM64 + push Docker Hub
-#   Stage 2 (Deploy) : Agent d'environnement Staging (sur le VPS)
-#                      → Déploiement local (pas de SSH)
+# Architecture (Build Once, Deploy Many) :
+#   Les images Docker sont buildées dans le pipeline CI.
+#   Ce pipeline ne fait que déployer et re-tagger.
 #
 # Équivalent de : .github/workflows/cd-staging.yml
 # ============================================
 
-trigger: none  # Pas de trigger direct, déclenché par pipeline resource
+trigger: none
 
 resources:
   pipelines:
     - pipeline: ci
-      source: 'DKPT CI'  # Nom du pipeline CI enregistré dans l'UI
+      source: 'DKPT CI'
       trigger:
         branches:
           include:
             - main
 
 variables:
-  - group: dkpt-secrets   # Variables communes (DOCKERHUB_USERNAME, POSTGRES_DB, etc.)
-  - group: dkpt-staging   # Variables spécifiques staging (POSTGRES_PASSWORD, JWT_SECRET_KEY, etc.)
+  - group: dkpt-secrets
+  - group: dkpt-staging
   - name: dockerBackendImage
     value: '$(DOCKERHUB_USERNAME)/dkpt-backend'
   - name: dockerFrontendImage
@@ -34,49 +32,16 @@ variables:
 
 stages:
   # ============================================
-  # Stage 1 — Docker Build & Push (tag :staging)
-  # ============================================
-  - stage: Docker
-    displayName: 'Docker Build & Push (Staging)'
-    pool: Default  # Agent self-hosted DKPT-ARM64 (ARM64 natif)
-    jobs:
-      - job: BuildPush
-        displayName: 'Build & Push Images'
-        steps:
-          - checkout: self
-
-          - task: Docker@2
-            displayName: 'Login to Docker Hub'
-            inputs:
-              containerRegistry: 'dockerhub-connection'
-              command: 'login'
-
-          # ---- Backend Image ----
-          - script: |
-              docker build -t $(dockerBackendImage):staging -t $(dockerBackendImage):staging-$(Build.SourceVersion) ./backend
-              docker push $(dockerBackendImage):staging
-              docker push $(dockerBackendImage):staging-$(Build.SourceVersion)
-            displayName: 'Build & Push Backend'
-
-          # ---- Frontend Image ----
-          - script: |
-              docker build -t $(dockerFrontendImage):staging -t $(dockerFrontendImage):staging-$(Build.SourceVersion) ./frontend
-              docker push $(dockerFrontendImage):staging
-              docker push $(dockerFrontendImage):staging-$(Build.SourceVersion)
-            displayName: 'Build & Push Frontend'
-
-  # ============================================
-  # Stage 2 — Deploy to Staging VPS
+  # Stage 1 — Deploy to Staging VPS
   # ============================================
   - stage: DeployStaging
     displayName: 'Deploy to Staging'
-    dependsOn: Docker
     jobs:
       - deployment: DeployVPS
         displayName: 'Deploy to Staging VPS'
         environment:
           name: 'Staging'
-          resourceType: VirtualMachine  # Exécuter sur l'agent VM du VPS
+          resourceType: VirtualMachine
         strategy:
           runOnce:
             deploy:
@@ -84,9 +49,11 @@ stages:
                 - checkout: self
 
                 - template: templates/deploy-vps.yml
+                  parameters:
+                    envTag: 'staging'
 
   # ============================================
-  # Stage 3 — Quality Gate (post-deploy)
+  # Stage 2 — Quality Gate (post-deploy)
   # ============================================
   - stage: QualityGate
     displayName: 'Quality Gate'

@@ -12,6 +12,11 @@
 # Utilisé par : cd-staging.yml, cd-prod.yml
 # ============================================
 
+parameters:
+  - name: envTag
+    type: string
+    default: 'latest'
+
 steps:
   - script: |
       echo "=== Debug: Workspace paths ==="
@@ -49,8 +54,26 @@ steps:
       export CORS_ORIGINS="$(CORS_ORIGINS)"
       export NUXT_PUBLIC_API_BASE="$(NUXT_PUBLIC_API_BASE)"
       export APPLICATIONINSIGHTS_CONNECTION_STRING="$(APPLICATIONINSIGHTS_CONNECTION_STRING)"
+      export IMAGE_TAG="sha-$(echo '$(Build.SourceVersion)' | cut -c1-8)"
       bash /opt/dkpt/scripts/generate-env.sh
     displayName: 'Generate .env file'
 
   - script: bash /opt/dkpt/scripts/deploy.sh
     displayName: 'Deploy via docker compose'
+
+  # Re-tag images with environment tag
+  - task: Docker@2
+    displayName: 'Login to Docker Hub'
+    inputs:
+      containerRegistry: 'dockerhub-connection'
+      command: 'login'
+
+  - script: |
+      SHORT_SHA=$(echo "$(Build.SourceVersion)" | cut -c1-8)
+      echo "🏷️ Re-tagging images as :${{ parameters.envTag }}"
+      docker tag $(dockerBackendImage):sha-${SHORT_SHA} $(dockerBackendImage):${{ parameters.envTag }}
+      docker push $(dockerBackendImage):${{ parameters.envTag }}
+      docker tag $(dockerFrontendImage):sha-${SHORT_SHA} $(dockerFrontendImage):${{ parameters.envTag }}
+      docker push $(dockerFrontendImage):${{ parameters.envTag }}
+      echo "✅ Images tagged as :${{ parameters.envTag }}"
+    displayName: 'Re-tag images as :${{ parameters.envTag }}'

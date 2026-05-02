@@ -31,7 +31,7 @@ services:
 
   # ---- Backend (image Docker Hub) ----
   backend:
-    image: alphab224/dkpt-backend:latest
+    image: alphab224/dkpt-backend:${IMAGE_TAG:-latest}
     container_name: dkpt-backend-prod
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
@@ -56,7 +56,7 @@ services:
 
   # ---- Frontend (image Docker Hub) ----
   frontend:
-    image: alphab224/dkpt-frontend:latest
+    image: alphab224/dkpt-frontend:${IMAGE_TAG:-latest}
     container_name: dkpt-frontend-prod
     environment:
       NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE}

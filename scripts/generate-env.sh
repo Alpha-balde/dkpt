@@ -32,6 +32,7 @@ ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
 NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
 NUXT_API_BASE_INTERNAL=${NUXT_API_BASE_INTERNAL:-http://dkpt-backend-prod:8080}
 ApplicationInsights__ConnectionString=${APPLICATIONINSIGHTS_CONNECTION_STRING}
+IMAGE_TAG=${IMAGE_TAG:-latest}
 EOF
 
 echo "✅ .env generated with $(wc -l < "$ENV_FILE") variables"
