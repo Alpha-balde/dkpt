@@ -47,6 +47,16 @@ stages:
         steps:
           - checkout: self
             fetchDepth: 0  # NE PAS LIMITER la profondeur de clonage
+
+          - script: mkdir -p $(Pipeline.Workspace)/.sonar/cache
+            displayName: 'Create SonarCloud cache directory'
+
+          - task: Cache@2
+            displayName: 'Cache SonarCloud'
+            inputs:
+              key: 'sonar | "$(Agent.OS)"'
+              path: '$(Pipeline.Workspace)/.sonar/cache'
+
           - task: SonarCloudPrepare@3
             displayName: 'SonarCloud — Prepare'
             inputs:
@@ -55,6 +65,8 @@ stages:
               scannerMode: 'dotnet'
               projectKey: '$(SONAR_PROJECT_KEY)'
               projectName: 'DKPT'
+              extraProperties: |
+                sonar.userHome=$(Pipeline.Workspace)/.sonar
 
           - template: templates/build-dotnet.yml
 
