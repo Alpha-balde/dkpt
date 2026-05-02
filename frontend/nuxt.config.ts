@@ -1,5 +1,14 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  app: {
+    head: {
+      title: 'DKPT — Gestion des cotisations',
+      meta: [
+        { name: 'description', content: 'Application de gestion de l\'association DKPT — Diiwal Koïn Préfecture Tougué' }
+      ]
+    }
+  },
+
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui'
