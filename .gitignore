@@ -6,7 +6,7 @@ backend/**/bin/
 backend/**/obj/
 
 # Node
-frontend/node_modules/
+node_modules/
 frontend/.nuxt/
 frontend/.output/
 
