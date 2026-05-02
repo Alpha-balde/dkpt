@@ -20,15 +20,16 @@ steps:
       version: '9.0.x'
 
   # Cache NuGet packages (clé basée sur les fichiers .csproj)
+  - script: mkdir -p $(Pipeline.Workspace)/.nuget/packages
+    displayName: 'Create NuGet cache directory'
+
   - task: Cache@2
     displayName: 'Cache NuGet packages'
     inputs:
       key: 'nuget | "$(Agent.OS)" | backend/**/*.csproj'
       restoreKeys: |
         nuget | "$(Agent.OS)"
-      path: '$(NUGET_PACKAGES)'
-    env:
-      NUGET_PACKAGES: $(Pipeline.Workspace)/.nuget/packages
+      path: '$(Pipeline.Workspace)/.nuget/packages'
 
   - script: dotnet restore
     displayName: 'Restore dependencies'
