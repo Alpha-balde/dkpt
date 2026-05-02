@@ -1,0 +1,33 @@
+# ============================================
+# DKPT — Azure DevOps : Template Build Docker
+# ============================================
+# Build & push des images Docker sur Docker Hub.
+# Exécuté sur l'agent self-hosted ARM64 (pool Default).
+# Tag : sha-{8 premiers chars du commit}
+#
+# Utilisé par : ci.yml
+# ============================================
+
+steps:
+  - checkout: self
+
+  - task: Docker@2
+    displayName: 'Login to Docker Hub'
+    inputs:
+      containerRegistry: 'dockerhub-connection'
+      command: 'login'
+
+  - script: |
+      SHORT_SHA=$(echo "$(Build.SourceVersion)" | cut -c1-8)
+      echo "##vso[task.setvariable variable=shortSha;isOutput=true]${SHORT_SHA}"
+      echo "🐳 Building images with tag: sha-${SHORT_SHA}"
+
+      docker build -t $(dockerBackendImage):sha-${SHORT_SHA} ./backend
+      docker push $(dockerBackendImage):sha-${SHORT_SHA}
+
+      docker build -t $(dockerFrontendImage):sha-${SHORT_SHA} ./frontend
+      docker push $(dockerFrontendImage):sha-${SHORT_SHA}
+
+      echo "✅ Images pushed with tag sha-${SHORT_SHA}"
+    name: dockerBuild
+    displayName: 'Build & Push Images (sha tag)'

@@ -1,14 +1,13 @@
 # ============================================
 # DKPT — Azure DevOps : Pipeline CD Production
 # ============================================
-# Docker build & push (tag :latest) + deploy sur VPS production
-# Déclenché après succès du pipeline CI sur main
+# Deploy sur VPS production
+# Déclenché après succès du pipeline CD Staging sur main
 #
-# Architecture :
-#   Stage 1 (Docker) : Agent self-hosted DKPT-ARM64 (pool Default)
-#                      → Build natif ARM64 + push Docker Hub
-#   Stage 2 (Deploy) : Agent d'environnement Prod (sur le VPS)
-#                      → Déploiement local (pas de SSH)
+# Architecture (Build Once, Deploy Many) :
+#   Les images Docker sont buildées dans le pipeline CI.
+#   Ce pipeline ne fait que déployer et re-tagger.
+#   L'image déployée est exactement celle validée en staging.
 #
 # Équivalent de : .github/workflows/cd-prod.yml
 # ============================================
@@ -17,16 +16,16 @@ trigger: none
 
 resources:
   pipelines:
-    - pipeline: ci
-      source: 'DKPT CI'
+    - pipeline: staging
+      source: 'cd-staging'
       trigger:
         branches:
           include:
             - main
 
 variables:
-  - group: dkpt-secrets   # Variables communes
-  - group: dkpt-prod      # Variables spécifiques production
+  - group: dkpt-secrets
+  - group: dkpt-prod
   - name: dockerBackendImage
     value: '$(DOCKERHUB_USERNAME)/dkpt-backend'
   - name: dockerFrontendImage
@@ -34,49 +33,16 @@ variables:
 
 stages:
   # ============================================
-  # Stage 1 — Docker Build & Push (tag :latest)
-  # ============================================
-  - stage: Docker
-    displayName: 'Docker Build & Push (Production)'
-    pool: Default  # Agent self-hosted DKPT-ARM64 (ARM64 natif)
-    jobs:
-      - job: BuildPush
-        displayName: 'Build & Push Images'
-        steps:
-          - checkout: self
-
-          - task: Docker@2
-            displayName: 'Login to Docker Hub'
-            inputs:
-              containerRegistry: 'dockerhub-connection'
-              command: 'login'
-
-          # ---- Backend Image ----
-          - script: |
-              docker build -t $(dockerBackendImage):latest -t $(dockerBackendImage):$(Build.SourceVersion) ./backend
-              docker push $(dockerBackendImage):latest
-              docker push $(dockerBackendImage):$(Build.SourceVersion)
-            displayName: 'Build & Push Backend'
-
-          # ---- Frontend Image ----
-          - script: |
-              docker build -t $(dockerFrontendImage):latest -t $(dockerFrontendImage):$(Build.SourceVersion) ./frontend
-              docker push $(dockerFrontendImage):latest
-              docker push $(dockerFrontendImage):$(Build.SourceVersion)
-            displayName: 'Build & Push Frontend'
-
-  # ============================================
-  # Stage 2 — Deploy to Production VPS
+  # Stage — Deploy to Production VPS
   # ============================================
   - stage: DeployProd
     displayName: 'Deploy to Production'
-    dependsOn: Docker
     jobs:
       - deployment: DeployVPS
         displayName: 'Deploy to Production VPS'
         environment:
           name: 'Prod'
-          resourceType: VirtualMachine  # Exécuter sur l'agent VM du VPS
+          resourceType: VirtualMachine
         strategy:
           runOnce:
             deploy:
@@ -84,3 +50,5 @@ stages:
                 - checkout: self
 
                 - template: templates/deploy-vps.yml
+                  parameters:
+                    envTag: 'latest'
