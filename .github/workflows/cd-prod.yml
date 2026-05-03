@@ -91,7 +91,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            sudo mkdir -p /opt/dkpt/nginx
+            sudo mkdir -p /opt/dkpt/caddy
+            sudo rm -rf /opt/dkpt/nginx
             sudo chown -R $(whoami):$(whoami) /opt/dkpt
 
       - name: Copy infrastructure files to VPS
@@ -100,7 +101,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.prod.yml,nginx/nginx.conf,scripts/,docker/seed/"
+          source: "docker-compose.prod.yml,caddy/Caddyfile,scripts/,docker/seed/"
           target: "/opt/dkpt"
 
       - name: Generate .env on VPS
@@ -114,11 +115,12 @@ jobs:
           JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
+          SITE_ADDRESS: ${{ secrets.SITE_ADDRESS }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET_KEY,JWT_ISSUER,JWT_AUDIENCE,CORS_ORIGINS,NUXT_PUBLIC_API_BASE
+          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET_KEY,JWT_ISSUER,JWT_AUDIENCE,CORS_ORIGINS,NUXT_PUBLIC_API_BASE,SITE_ADDRESS
           script: bash /opt/dkpt/scripts/generate-env.sh
 
       - name: Deploy via SSH

@@ -34,10 +34,11 @@ steps:
         SOURCES="$(Pipeline.Workspace)/s"
       fi
       echo "Using source path: $SOURCES"
-      sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed /opt/dkpt/scripts
+      sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed /opt/dkpt/scripts
+      sudo rm -rf /opt/dkpt/nginx  # Nettoyage migration Nginx → Caddy
       sudo chown -R $(whoami):$(whoami) /opt/dkpt
       cp "$SOURCES/docker-compose.prod.yml" /opt/dkpt/
-      cp "$SOURCES/nginx/nginx.conf" /opt/dkpt/nginx/
+      cp "$SOURCES/caddy/Caddyfile" /opt/dkpt/caddy/
       cp -r "$SOURCES/docker/seed/." /opt/dkpt/docker/seed/
       cp -r "$SOURCES/scripts/." /opt/dkpt/scripts/
       echo "✅ Files copied to /opt/dkpt/"
@@ -54,6 +55,7 @@ steps:
       export CORS_ORIGINS="$(CORS_ORIGINS)"
       export NUXT_PUBLIC_API_BASE="$(NUXT_PUBLIC_API_BASE)"
       export APPLICATIONINSIGHTS_CONNECTION_STRING="$(APPLICATIONINSIGHTS_CONNECTION_STRING)"
+      export SITE_ADDRESS="$(SITE_ADDRESS)"
       export IMAGE_TAG="sha-$(echo '$(Build.SourceVersion)' | cut -c1-8)"
       bash /opt/dkpt/scripts/generate-env.sh
     displayName: 'Generate .env file'
