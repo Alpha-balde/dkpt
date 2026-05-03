@@ -83,7 +83,7 @@ definitions:
               SSH_USER: $VPS_STAGING_USER
               SERVER: $VPS_STAGING_HOST
               SSH_KEY: $VPS_STAGING_SSH_KEY
-              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
+              COMMAND: 'sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
           # Copier les fichiers d'infrastructure sur le VPS
           - pipe: atlassian/scp-deploy:1.4.0
             variables:
@@ -96,8 +96,8 @@ definitions:
             variables:
               USER: $VPS_STAGING_USER
               SERVER: $VPS_STAGING_HOST
-              REMOTE_PATH: '/opt/dkpt/nginx'
-              LOCAL_PATH: 'nginx/*'
+              REMOTE_PATH: '/opt/dkpt/caddy'
+              LOCAL_PATH: 'caddy/*'
               SSH_KEY: $VPS_STAGING_SSH_KEY
           - pipe: atlassian/scp-deploy:1.4.0
             variables:
@@ -132,7 +132,7 @@ definitions:
               SSH_USER: $VPS_USER
               SERVER: $VPS_HOST
               SSH_KEY: $VPS_SSH_KEY
-              COMMAND: 'sudo mkdir -p /opt/dkpt/nginx /opt/dkpt/docker/seed && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
+              COMMAND: 'sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
           # Copier les fichiers d'infrastructure sur le VPS
           - pipe: atlassian/scp-deploy:1.4.0
             variables:
@@ -145,8 +145,8 @@ definitions:
             variables:
               USER: $VPS_USER
               SERVER: $VPS_HOST
-              REMOTE_PATH: '/opt/dkpt/nginx'
-              LOCAL_PATH: 'nginx/*'
+              REMOTE_PATH: '/opt/dkpt/caddy'
+              LOCAL_PATH: 'caddy/*'
               SSH_KEY: $VPS_SSH_KEY
           - pipe: atlassian/scp-deploy:1.4.0
             variables:

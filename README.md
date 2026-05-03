@@ -13,7 +13,7 @@ Application de gestion des cotisations et des membres de l'association DKPT.
 | **Base de données** | PostgreSQL 16 (Docker) |
 | **Auth** | JWT custom (BCrypt) |
 | **API Docs** | Swagger / OpenAPI |
-| **Infrastructure** | Docker Compose, Nginx reverse proxy |
+| **Infrastructure** | Docker Compose, Caddy reverse proxy |
 | **CI/CD** | GitHub Actions, GitLab CI, Azure DevOps, Bitbucket Pipelines |
 | **Production** | Oracle Cloud VPS (Ubuntu 22.04) |
 
@@ -78,7 +78,7 @@ docker compose down -v
 
 ```
                     ┌──────────────┐
-    :80             │    Nginx     │
+    :80/:443        │    Caddy     │
   ──────────────────┤ reverse proxy│
                     └──────┬───────┘
                      /api  │  /*
@@ -269,8 +269,8 @@ Dkpt/
 │   ├── azure-devops.md
 │   └── bitbucket.md
 │
-├── nginx/
-│   └── nginx.conf              ← Configuration du reverse proxy
+├── caddy/
+│   └── Caddyfile                ← Configuration du reverse proxy
 ├── docker/
 │   └── seed/
 │       ├── seed-data.sql
@@ -318,7 +318,7 @@ Dkpt/
 |-------|--------|-------------|
 | 1 — Backend API | ✅ Terminé | .NET 9, Clean Architecture, JWT, 5 tables, Swagger |
 | 2 — Frontend | ✅ Terminé | Nuxt 4, 10 pages, auth, layout responsive |
-| 3 — Infrastructure | ✅ Terminé | Docker Compose, Dockerfiles multi-stage, Nginx, seed auto |
+| 3 — Infrastructure | ✅ Terminé | Docker Compose, Dockerfiles multi-stage, Caddy, seed auto |
 | 4 — CI/CD (GitHub Actions) | ✅ Terminé | CI + CD staging/prod + PR check + variantes + mirroring |
 | 4 — CI/CD (GitLab CI) | 📝 Configuré | Pipelines parent-child créés, à tester après mirroring |
 | 4 — CI/CD (Azure DevOps) | 📝 Configuré | Pipelines + templates créés, enregistrement UI à faire |

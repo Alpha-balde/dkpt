@@ -31,7 +31,7 @@ Write-Host "  OK" -ForegroundColor Green
 
 # 4. Create users via API
 Write-Host "[4/5] Creation des utilisateurs via l'API..." -ForegroundColor Yellow
-$baseUrl = "http://localhost/api"  # via Nginx
+$baseUrl = "http://localhost/api"  # via Caddy
 
 $users = @(
     @{ email = "admin@dkpt.com"; password = "Dkpt@2026"; role = "Admin" },
