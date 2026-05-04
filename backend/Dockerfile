@@ -26,6 +26,9 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
+# Run as non-root user (built-in in .NET 8+ images)
+USER app
+
 # .NET 9 default port
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
