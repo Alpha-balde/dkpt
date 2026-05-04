@@ -99,6 +99,28 @@ docker compose down -v
          └─────────────┘
 ```
 
+## Stratégie de Branching
+
+Le projet suit un modèle **GitHub Flow simplifié** avec les branches suivantes :
+
+```
+main         ← Production (branche protégée)
+develop      ← Staging / intégration
+feature/*    ← Développement de fonctionnalités
+```
+
+| Branche | Rôle | Protection |
+|---------|------|-----------|
+| `main` | Code en production | ✅ PR obligatoire, CI doit passer |
+| `develop` | Intégration, déploiement staging | PR recommandée |
+| `feature/*` | Développement | Merge vers `develop` ou `main` via PR |
+
+**Workflow** :
+1. Créer une branche `feature/nom` depuis `main`
+2. Développer et pousser
+3. Ouvrir une PR → le pipeline `pr-check.yml` vérifie le code
+4. Merge dans `main` après review → CI + CD se déclenchent
+
 ---
 
 ## CI/CD Multi-Plateformes
