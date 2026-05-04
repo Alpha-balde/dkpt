@@ -21,6 +21,9 @@ WORKDIR /app
 # Copy only the built output
 COPY --from=build /app/.output ./.output
 
+# Run as non-root user (built-in in node:alpine images)
+USER node
+
 ENV HOST=0.0.0.0
 ENV PORT=3000
 EXPOSE 3000
