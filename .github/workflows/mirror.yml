@@ -43,12 +43,8 @@ jobs:
       - name: Mirror to Bitbucket
         uses: pixta-dev/repository-mirroring-action@v1
         with:
-          target_repo_url: git@bitbucket.org:Alpha-balde/dkpt.git
+          target_repo_url: git@bitbucket.org:alpha-balde/dkpt-mirror.git
           ssh_private_key: ${{ secrets.BITBUCKET_SSH_KEY }}
 
       # ---- Azure Repos ----
-      - name: Mirror to Azure Repos
-        uses: pixta-dev/repository-mirroring-action@v1
-        with:
-          target_repo_url: git@ssh.dev.azure.com:v3/Alpha-balde/dkpt/dkpt
-          ssh_private_key: ${{ secrets.AZURE_REPOS_SSH_KEY }}
+      # plus besoin de mirror, car on utilise directement le repo github avec Github Apps pour connecter les plateformes 
