@@ -2,18 +2,18 @@
 # DKPT — Mirror Repository
 # ============================================
 # Synchronise le repo GitHub vers les plateformes miroirs :
-#   - GitLab (pull mirror natif OU push ici)
+#   - GitLab
 #   - Bitbucket
 #   - Azure Repos
 #
-# Déclenché sur chaque push vers main ou develop
+# Déclenché sur chaque push vers main
 # ============================================
 
 name: Mirror Repositories
 
 on:
   push:
-    branches: [develop]
+    branches: [main]
 
 jobs:
   # ============================================
@@ -30,12 +30,12 @@ jobs:
           fetch-depth: 0  # Full history pour le mirroring
 
       # ---- GitLab ----
-      # Note : GitLab supporte le pull mirror natif (Settings → Repository → Mirroring)
-      # Ce step est un fallback si le pull mirror n'est pas configuré
+      # Pull mirror natif indisponible sur le free tier GitLab
+      # Ce step pousse le code depuis GitHub vers GitLab
       - name: Mirror to GitLab
         uses: pixta-dev/repository-mirroring-action@v1
         with:
-          target_repo_url: git@gitlab.com:Alpha-balde/dkpt.git
+          target_repo_url: git@gitlab.com:Alpha_Balde/dkpt-mirror.git
           ssh_private_key: ${{ secrets.GITLAB_SSH_KEY }}
 
       # ---- Bitbucket ----
