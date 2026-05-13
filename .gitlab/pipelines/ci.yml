@@ -12,7 +12,7 @@ stages:
 
 variables:
   DOTNET_VERSION: "9.0"
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
 
 # ============================================
 # Job 1 — Backend Build & Test
@@ -32,14 +32,15 @@ backend-build-test:
       - backend/**/obj/
 
 # ============================================
-# Job 2 — Frontend Build
+# Job 2 — Frontend Lint & Build
 # ============================================
-frontend-build:
+frontend-lint-build:
   stage: build-test
-  image: node:20-alpine
+  image: node:22-alpine
   script:
     - cd frontend
     - npm ci --cache .npm
+    - npm run lint
     - npm run build
   cache:
     key: node-${CI_COMMIT_REF_SLUG}
