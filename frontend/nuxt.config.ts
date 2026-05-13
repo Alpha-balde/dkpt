@@ -1,5 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/ui'
+  ],
+
   app: {
     head: {
       title: 'DKPT — Gestion des cotisations',
@@ -8,11 +13,6 @@ export default defineNuxtConfig({
       ]
     }
   },
-
-  modules: [
-    '@nuxt/eslint',
-    '@nuxt/ui'
-  ],
 
   devtools: { enabled: true },
 
