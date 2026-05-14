@@ -205,6 +205,43 @@ Le pipeline Bitbucket s'est déclenché automatiquement après le mirroring. La 
 
 > **Attention** : Avec seulement **50 minutes/mois** gratuites, chaque exécution de la section `main` (~2m17s) consomme environ **4.5%** du quota mensuel. C'est un facteur limitant majeur pour un usage en production.
 
+### Self-hosted runner vs Shared runners
+
+Un self-hosted runner Linux a été configuré pour contourner la limitation des 50 minutes/mois.
+
+#### Configuration du runner
+
+```yaml
+# Utilisation dans bitbucket-pipelines.yml
+- step:
+    <<: *build-test-backend
+    runs-on:
+      - self.hosted
+      - linux
+```
+
+#### Mise en place
+
+| Étape | Détail |
+|-------|--------|
+| **Type** | Runner: Linux Container |
+| **Labels** | `self.hosted`, `linux` |
+| **Version** | V5 |
+| **Installation** | Via Docker sur machine locale |
+
+#### Comparaison des performances
+
+| Métrique | Shared runners | Self-hosted runner |
+|----------|:-:|:-:|
+| Pipeline CI total | **3m11s** | **3m02s** |
+| Consomme des minutes | ✅ Oui (50/mois) | ❌ Non (illimité) |
+| Maintenance | Aucune | Hébergement requis |
+| Disponibilité | 24/7 | Dépend de la machine hôte |
+
+> **Observation** : Le self-hosted runner est légèrement plus rapide (~3%) mais l'avantage principal est de **ne pas consommer le quota de 50 minutes/mois**. C'est une solution pragmatique pour un projet de test/mémoire.
+
+> **Comparaison avec Azure DevOps** : Azure DevOps utilise aussi un self-hosted agent (ARM64 sur le VPS de production). La différence est que l'agent Azure est permanent et tourne en tant que service, tandis que le runner Bitbucket tourne dans un container Docker local.
+
 ---
 
 ## Comparaison avec GitHub Actions
@@ -219,11 +256,13 @@ Le pipeline Bitbucket s'est déclenché automatiquement après le mirroring. La 
 | Artefacts | 90 jours | 14 jours |
 | Mirroring | Via `mirror.yml` workflow | Pas de pull mirror |
 | Rapidité runners | Standard | Plus rapide par job |
-| Temps CI total | ~1m16s | ~2m17s |
+| Self-hosted runner | ✅ (mais rarement nécessaire) | ✅ (quasi obligatoire vu les 50 min) |
+| Temps CI total | ~1m16s | ~3m (séquentiel) |
 
 ---
 
 ## Comparaison avec les autres plateformes
 
 → Voir [README.md](README.md) pour le tableau synthèse
+
 
