@@ -181,32 +181,41 @@ pipelines:
   # ============================================
   # CI — Toutes les branches (build & test)
   # ============================================
+pipelines:
   default:
-    - step: *build-test-backend
-    - step: *build-frontend
+    - step:
+        <<: *build-test-backend
+        runs-on:
+          - self.hosted
+          - linux
+    - step:
+        <<: *build-frontend
+        runs-on:
+          - self.hosted
+          - linux
 
   # ============================================
   # CD — Par branche
   # ============================================
-  branches:
-    # ---- Staging (develop) ----
-    develop:
-      - step: *build-test-backend
-      - step: *build-frontend
-      - step: *docker-build-push-staging
-      - step: *deploy-staging
+  # branches:
+  #   # ---- Staging (develop) ----
+  #   develop:
+  #     - step: *build-test-backend
+  #     - step: *build-frontend
+  #     - step: *docker-build-push-staging
+  #     - step: *deploy-staging
 
-    # ---- Production (main) ----
-    main:
-      - step: *build-test-backend
-      - step: *build-frontend
-      - step: *docker-build-push-prod
-      - step: *deploy-prod
+  #   # ---- Production (main) ----
+  #   main:
+  #     - step: *build-test-backend
+  #     - step: *build-frontend
+  #     - step: *docker-build-push-prod
+  #     - step: *deploy-prod
 
-  # ============================================
-  # PR Check — Vérification des Pull Requests
-  # ============================================
-  pull-requests:
-    '**':
-      - step: *build-test-backend
-      - step: *build-frontend
+  # # ============================================ 
+  # # PR Check — Vérification des Pull Requests
+  # # ============================================
+  # pull-requests:
+  #   '**':
+  #     - step: *build-test-backend
+  #     - step: *build-frontend
