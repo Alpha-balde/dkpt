@@ -1,16 +1,5 @@
 <script setup lang="ts">
-import type { Member, Payment, PagedResult } from '~/types'
-
-interface CotisationStat {
-  id: string
-  numeroMembre: string
-  prenom: string
-  nom: string
-  paidAmount: number
-  expectedAmount: number
-  gap: number
-  status: string
-}
+import type { Member, Payment } from '~/types'
 
 const { apiFetch } = useApi()
 const route = useRoute()
@@ -24,15 +13,7 @@ const { data: payments } = await useAsyncData(`member-payments-${id}`, () =>
   apiFetch<Payment[]>(`/Payments/member/${id}`)
 )
 
-// Cotisation stats for this member (all years)
-const { data: cotisStats } = await useAsyncData(`member-cotis-${id}`, () =>
-  apiFetch<PagedResult<CotisationStat>>(`/Cotisations?page=1&pageSize=1&search=${id}`).catch(() => null)
-)
-
-// Available years for contributions
-const { data: availableYears } = await useAsyncData('member-years', () =>
-  apiFetch<number[]>('/Settings/years').catch(() => [] as number[])
-)
+// Settings contributions for expected amounts (years fetched implicitly from contributions)
 
 // Settings contributions for expected amounts
 const { data: contributions } = await useAsyncData('member-contributions', () =>
@@ -40,8 +21,9 @@ const { data: contributions } = await useAsyncData('member-contributions', () =>
 )
 
 // Settings default amount
+interface SettingRaw { montantCotisationAnnuelleParDefaut?: number }
 const { data: settingRaw } = await useAsyncData('member-setting', () =>
-  apiFetch<any>('/Settings').catch(() => null)
+  apiFetch<SettingRaw>('/Settings').catch(() => null)
 )
 const defaultAmount = computed(() => settingRaw.value?.montantCotisationAnnuelleParDefaut || 60000)
 

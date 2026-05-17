@@ -193,8 +193,9 @@ async function savePayment() {
     }
     showPaymentModal.value = false
     refresh()
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible d\'enregistrer', color: 'error' })
+  } catch (err: unknown) {
+    const msg = (err as { data?: { message?: string } })?.data?.message
+    toast.add({ title: 'Erreur', description: msg || 'Impossible d\'enregistrer', color: 'error' })
   } finally {
     saving.value = false
   }
@@ -632,7 +633,7 @@ onMounted(() => {
             <label class="text-sm font-medium text-gray-700">Note</label>
             <UTextarea
               v-model="paymentForm.note"
-              rows="2"
+              :rows="2"
               placeholder="Commentaire libre..."
             />
           </div>

@@ -97,8 +97,9 @@ async function createMember() {
     toast.add({ title: 'Membre créé avec succès', color: 'success', icon: 'i-lucide-check-circle' })
     showCreateModal.value = false
     refresh()
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible de créer le membre', color: 'error' })
+  } catch (err: unknown) {
+    const msg = (err as { data?: { message?: string } })?.data?.message
+    toast.add({ title: 'Erreur', description: msg || 'Impossible de créer le membre', color: 'error' })
   } finally {
     creating.value = false
   }
@@ -146,8 +147,9 @@ async function updateMember() {
     toast.add({ title: 'Membre modifié', color: 'success', icon: 'i-lucide-check-circle' })
     showEditModal.value = false
     refresh()
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible de modifier', color: 'error' })
+  } catch (err: unknown) {
+    const msg = (err as { data?: { message?: string } })?.data?.message
+    toast.add({ title: 'Erreur', description: msg || 'Impossible de modifier', color: 'error' })
   } finally {
     saving.value = false
   }

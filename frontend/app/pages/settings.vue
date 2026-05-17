@@ -6,8 +6,9 @@ const { isAdmin } = useAuth()
 const toast = useToast()
 
 // --- Default amount ---
-const { data: settingRaw, refresh: refreshSetting } = await useAsyncData('setting-default', () =>
-  apiFetch<any>('/Settings').catch(() => null)
+interface SettingRaw { montantCotisationAnnuelleParDefaut?: number }
+const { data: settingRaw } = await useAsyncData('setting-default', () =>
+  apiFetch<SettingRaw>('/Settings').catch(() => null)
 )
 const defaultAmount = computed(() => settingRaw.value?.montantCotisationAnnuelleParDefaut || 60000)
 
@@ -35,8 +36,9 @@ async function addContribution() {
     addForm.year = new Date().getFullYear()
     addForm.amount = 60000
     refreshContrib()
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible d\'ajouter', color: 'error' })
+  } catch (err: unknown) {
+    const msg = (err as { data?: { message?: string } })?.data?.message
+    toast.add({ title: 'Erreur', description: msg || 'Impossible d\'ajouter', color: 'error' })
   } finally {
     saving.value = false
   }
@@ -55,8 +57,9 @@ async function updateContribution() {
     toast.add({ title: 'Montant mis à jour', color: 'success', icon: 'i-lucide-check-circle' })
     showEditModal.value = false
     refreshContrib()
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible de modifier', color: 'error' })
+  } catch (err: unknown) {
+    const msg = (err as { data?: { message?: string } })?.data?.message
+    toast.add({ title: 'Erreur', description: msg || 'Impossible de modifier', color: 'error' })
   } finally {
     saving.value = false
   }

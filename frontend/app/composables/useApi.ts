@@ -2,7 +2,7 @@ export function useApi() {
   const config = useRuntimeConfig()
   const { token, logout } = useAuth()
 
-  async function apiFetch<T>(path: string, options: any = {}): Promise<T> {
+  async function apiFetch<T>(path: string, options: Parameters<typeof $fetch>[1] = {}): Promise<T> {
     const baseUrl = import.meta.server && config.apiBaseInternal
       ? config.apiBaseInternal
       : config.public.apiBase
