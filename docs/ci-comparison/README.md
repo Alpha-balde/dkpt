@@ -68,6 +68,7 @@
 - [Bitbucket](bitbucket.md) — Fichier unique, YAML anchors, limitations
 - [Quality Gates](quality-gates-integration.md) — Journal d'implémentation détaillé (5 phases, 10 problèmes)
 - [Sélecteur de plateforme](platform-selector.md) — Stratégie de déclenchement ciblé par mot-clé commit (`[ci:github]`, `[ci:gitlab]`, `[ci:bitbucket]`)
+- [Environnements de déploiement](environments.md) — Staging/Production sur les 3 plateformes : approbation manuelle, reviewers, comparaison des plans
 
 ---
 
