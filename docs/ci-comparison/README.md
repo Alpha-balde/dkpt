@@ -34,6 +34,7 @@
 | **Build Once Deploy Many** | ❌ | ❌ (adapté) | ✅ | ❌ (impossible nativement) |
 | **Quality Gate post-deploy** | ❌ | ❌ | ✅ (k6 + ZAP + Playwright) | ❌ |
 | **Analyse statique intégrée** | ❌ | ❌ | ✅ (SonarCloud + dotnet) | ❌ |
+| **Sélecteur plateforme (commit msg)** | ✅ Natif (`contains()`) | ✅ Natif (`=~ regex`) | — | ⚠️ Guard bash (`git log`) |
 | **Connexion repo** | Native | Via `mirror.yml` | **GitHub App (sans mirror)** | Via `mirror.yml` |
 | **Marketplace / Templates** | ✅ Très riche | ✅ | ✅ | ⚠️ Limité |
 | **Prix (au-delà du gratuit)** | $0.008/min | $10/mois | $40/mois | $15/mois |
@@ -66,6 +67,7 @@
 - [Azure DevOps](azure-devops.md) — **Plateforme la plus complète** : templates paramétrés, Build Once Deploy Many, Quality Gate (k6 + ZAP + Playwright), SonarCloud, GitHub App
 - [Bitbucket](bitbucket.md) — Fichier unique, YAML anchors, limitations
 - [Quality Gates](quality-gates-integration.md) — Journal d'implémentation détaillé (5 phases, 10 problèmes)
+- [Sélecteur de plateforme](platform-selector.md) — Stratégie de déclenchement ciblé par mot-clé commit (`[ci:github]`, `[ci:gitlab]`, `[ci:bitbucket]`)
 
 ---
 
