@@ -1,18 +1,20 @@
 # ============================================
 # DKPT — Bitbucket Pipelines
 # ============================================
-# Contrainte Bitbucket : un seul fichier à la racine.
-# Tout est organisé en sections (branches, pull-requests, custom).
+# Architecture : Build Once, Deploy Many (BODM)
 #
-# Bitbucket ne supporte PAS les pipelines séparés comme
-# GitHub Actions ou Azure DevOps. On utilise des sections
-# pour simuler le même comportement.
+# Contrainte Bitbucket : un seul fichier à la racine.
+# Pas de chaînage inter-pipelines — tout est dans branches: main:
+#
+# Flux BODM dans branches: main:
+#   CI (build+test) → Docker build :sha → Deploy staging → Retag :staging
+#                                       → Deploy prod (manual) → Retag :latest
 #
 # Équivalent de :
-#   - .github/workflows/ci.yml
-#   - .github/workflows/cd-staging.yml
-#   - .github/workflows/cd-prod.yml
-#   - .github/workflows/pr-check.yml
+#   - .github/workflows/ci.yml          → default: + étapes 1-2 de branches: main:
+#   - .github/workflows/cd-staging.yml  → étapes 3-4 de branches: main:
+#   - .github/workflows/cd-prod.yml     → étape 5 de branches: main:
+#   - .github/workflows/pr-check.yml    → pull-requests:
 #
 # Comparaison : voir docs/ci-comparison/bitbucket.md
 # ============================================
@@ -24,6 +26,7 @@ definitions:
   # Steps réutilisables (YAML anchors)
   # ============================================
   steps:
+    # ---- Step : Backend Build & Test ----
     - step: &build-test-backend
         name: 'Backend — Build & Test'
         image: mcr.microsoft.com/dotnet/sdk:9.0
@@ -35,153 +38,124 @@ definitions:
           - dotnet build --no-restore --configuration Release
           - dotnet test --no-build --configuration Release --verbosity minimal
 
+    # ---- Step : Frontend Lint & Build ----
+    # Node.js 22 requis (Object.groupBy — incompatible Node 20)
     - step: &build-frontend
-        name: 'Frontend — Build'
-        image: node:20-alpine
+        name: 'Frontend — Lint & Build'
+        image: node:22-alpine
         caches:
           - node
         script:
           - cd frontend
           - npm ci
+          - npm run lint
           - npm run build
 
-    - step: &docker-build-push-staging
-        name: 'Docker Build & Push (Staging)'
+    # ---- Step : Docker Build & Push (:sha-xxxxx) ----
+    # BUILD ONCE — image construite une seule fois, réutilisée pour staging + prod
+    - step: &docker-build-sha
+        name: 'Docker — Build & Push :sha-{8chars}'
         image: atlassian/default-image:4
         services:
           - docker
         script:
+          - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
+          - echo "🐳 Building images with tag sha-$SHORT_SHA"
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
           # Backend
-          - docker build -t $DOCKERHUB_USERNAME/dkpt-backend:staging ./backend
-          - docker push $DOCKERHUB_USERNAME/dkpt-backend:staging
+          - docker build -t $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA ./backend
+          - docker push $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
           # Frontend
-          - docker build -t $DOCKERHUB_USERNAME/dkpt-frontend:staging ./frontend
-          - docker push $DOCKERHUB_USERNAME/dkpt-frontend:staging
+          - docker build -t $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA ./frontend
+          - docker push $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA
+          - echo "✅ Images pushed: sha-$SHORT_SHA"
 
-    - step: &docker-build-push-prod
-        name: 'Docker Build & Push (Production)'
-        image: atlassian/default-image:4
-        services:
-          - docker
-        script:
-          - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-          # Backend
-          - docker build -t $DOCKERHUB_USERNAME/dkpt-backend:latest ./backend
-          - docker push $DOCKERHUB_USERNAME/dkpt-backend:latest
-          # Frontend
-          - docker build -t $DOCKERHUB_USERNAME/dkpt-frontend:latest ./frontend
-          - docker push $DOCKERHUB_USERNAME/dkpt-frontend:latest
-
+    # ---- Step : Deploy Staging + Retag :staging ----
+    # DEPLOY 1 — pull l'image :sha déjà sur Docker Hub, déploie, retag :staging
     - step: &deploy-staging
-        name: 'Deploy to Staging'
+        name: 'Deploy to Staging + Retag :staging'
         deployment: staging
+        services:
+          - docker
         script:
-          # Préparer le dossier de déploiement
-          - pipe: atlassian/ssh-run:0.8.1
-            variables:
-              SSH_USER: $VPS_STAGING_USER
-              SERVER: $VPS_STAGING_HOST
-              SSH_KEY: $VPS_STAGING_SSH_KEY
-              COMMAND: 'sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
-          # Copier les fichiers d'infrastructure sur le VPS
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_STAGING_USER
-              SERVER: $VPS_STAGING_HOST
-              REMOTE_PATH: '/opt/dkpt'
-              LOCAL_PATH: 'docker-compose.prod.yml'
-              SSH_KEY: $VPS_STAGING_SSH_KEY
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_STAGING_USER
-              SERVER: $VPS_STAGING_HOST
-              REMOTE_PATH: '/opt/dkpt/caddy'
-              LOCAL_PATH: 'caddy/*'
-              SSH_KEY: $VPS_STAGING_SSH_KEY
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_STAGING_USER
-              SERVER: $VPS_STAGING_HOST
-              REMOTE_PATH: '/opt/dkpt/docker/seed'
-              LOCAL_PATH: 'docker/seed/*'
-              SSH_KEY: $VPS_STAGING_SSH_KEY
-          # Déployer
-          - pipe: atlassian/ssh-run:0.8.1
-            variables:
-              SSH_USER: $VPS_STAGING_USER
-              SERVER: $VPS_STAGING_HOST
-              SSH_KEY: $VPS_STAGING_SSH_KEY
-              COMMAND: >
-                cd /opt/dkpt &&
-                docker compose -f docker-compose.prod.yml pull &&
-                docker compose -f docker-compose.prod.yml up -d --remove-orphans &&
-                echo "🌱 Running database seed (idempotent)..." &&
-                docker compose -f docker-compose.prod.yml --profile seed up seed &&
-                docker image prune -f &&
-                echo "✅ Staging deploy complete!"
+          - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
+          # Setup SSH
+          - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          - eval $(ssh-agent -s)
+          - echo "$VPS_STAGING_SSH_KEY" | ssh-add -
+          - ssh-keyscan -H $VPS_STAGING_HOST >> ~/.ssh/known_hosts
+          # Prepare VPS directory
+          - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
+          # Copy infrastructure files
+          - scp docker-compose.prod.yml $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
+          - scp -r caddy/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
+          - scp -r docker/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
+          - scp -r scripts/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
+          # Generate .env with IMAGE_TAG=sha-$SHORT_SHA
+          - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' POSTGRES_PASSWORD='$POSTGRES_PASSWORD' JWT_SECRET_KEY='$JWT_SECRET_KEY' JWT_ISSUER='$JWT_ISSUER' JWT_AUDIENCE='$JWT_AUDIENCE' CORS_ORIGINS='$CORS_ORIGINS' NUXT_PUBLIC_API_BASE='$NUXT_PUBLIC_API_BASE' SITE_ADDRESS='$SITE_ADDRESS' APPLICATIONINSIGHTS_CONNECTION_STRING='$APPLICATIONINSIGHTS_CONNECTION_STRING' IMAGE_TAG=sha-$SHORT_SHA bash /opt/dkpt/scripts/generate-env.sh"
+          # Deploy
+          - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "bash /opt/dkpt/scripts/deploy.sh"
+          # BODM — Retag :staging (promouvoir l'image sha vers staging)
+          - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          - docker pull $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
+          - docker tag $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-backend:staging
+          - docker push $DOCKERHUB_USERNAME/dkpt-backend:staging
+          - docker pull $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA
+          - docker tag $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-frontend:staging
+          - docker push $DOCKERHUB_USERNAME/dkpt-frontend:staging
+          - echo "✅ Staging deployed — sha-$SHORT_SHA promoted to :staging"
 
+    # ---- Step : Deploy Production + Retag :latest ----
+    # DEPLOY 2 — même image :sha que staging, déploie en prod, retag :latest
     - step: &deploy-prod
-        name: 'Deploy to Production'
+        name: 'Deploy to Production + Retag :latest'
         deployment: production
-        trigger: manual  # Approbation manuelle pour la production
+        trigger: manual
+        services:
+          - docker
         script:
-          # Préparer le dossier de déploiement
-          - pipe: atlassian/ssh-run:0.8.1
-            variables:
-              SSH_USER: $VPS_USER
-              SERVER: $VPS_HOST
-              SSH_KEY: $VPS_SSH_KEY
-              COMMAND: 'sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R $(whoami):$(whoami) /opt/dkpt'
-          # Copier les fichiers d'infrastructure sur le VPS
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_USER
-              SERVER: $VPS_HOST
-              REMOTE_PATH: '/opt/dkpt'
-              LOCAL_PATH: 'docker-compose.prod.yml'
-              SSH_KEY: $VPS_SSH_KEY
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_USER
-              SERVER: $VPS_HOST
-              REMOTE_PATH: '/opt/dkpt/caddy'
-              LOCAL_PATH: 'caddy/*'
-              SSH_KEY: $VPS_SSH_KEY
-          - pipe: atlassian/scp-deploy:1.4.0
-            variables:
-              USER: $VPS_USER
-              SERVER: $VPS_HOST
-              REMOTE_PATH: '/opt/dkpt/docker/seed'
-              LOCAL_PATH: 'docker/seed/*'
-              SSH_KEY: $VPS_SSH_KEY
-          # Déployer
-          - pipe: atlassian/ssh-run:0.8.1
-            variables:
-              SSH_USER: $VPS_USER
-              SERVER: $VPS_HOST
-              SSH_KEY: $VPS_SSH_KEY
-              COMMAND: >
-                cd /opt/dkpt &&
-                docker compose -f docker-compose.prod.yml pull &&
-                docker compose -f docker-compose.prod.yml up -d --remove-orphans &&
-                echo "🌱 Running database seed (idempotent)..." &&
-                docker compose -f docker-compose.prod.yml --profile seed up seed &&
-                docker image prune -f &&
-                echo "✅ Production deploy complete!"
+          - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
+          # Setup SSH
+          - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          - eval $(ssh-agent -s)
+          - echo "$VPS_SSH_KEY" | ssh-add -
+          - ssh-keyscan -H $VPS_HOST >> ~/.ssh/known_hosts
+          # Prepare VPS directory
+          - ssh $VPS_USER@$VPS_HOST "sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
+          # Copy infrastructure files
+          - scp docker-compose.prod.yml $VPS_USER@$VPS_HOST:/opt/dkpt/
+          - scp -r caddy/ $VPS_USER@$VPS_HOST:/opt/dkpt/
+          - scp -r docker/ $VPS_USER@$VPS_HOST:/opt/dkpt/
+          - scp -r scripts/ $VPS_USER@$VPS_HOST:/opt/dkpt/
+          # Generate .env with IMAGE_TAG=sha-$SHORT_SHA (même image que staging)
+          - ssh $VPS_USER@$VPS_HOST "POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' POSTGRES_PASSWORD='$POSTGRES_PASSWORD' JWT_SECRET_KEY='$JWT_SECRET_KEY' JWT_ISSUER='$JWT_ISSUER' JWT_AUDIENCE='$JWT_AUDIENCE' CORS_ORIGINS='$CORS_ORIGINS' NUXT_PUBLIC_API_BASE='$NUXT_PUBLIC_API_BASE' SITE_ADDRESS='$SITE_ADDRESS' APPLICATIONINSIGHTS_CONNECTION_STRING='$APPLICATIONINSIGHTS_CONNECTION_STRING' IMAGE_TAG=sha-$SHORT_SHA bash /opt/dkpt/scripts/generate-env.sh"
+          # Deploy
+          - ssh $VPS_USER@$VPS_HOST "bash /opt/dkpt/scripts/deploy.sh"
+          # BODM — Retag :latest (promouvoir l'image sha vers latest)
+          - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          - docker pull $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
+          - docker tag $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-backend:latest
+          - docker push $DOCKERHUB_USERNAME/dkpt-backend:latest
+          - docker pull $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA
+          - docker tag $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-frontend:latest
+          - docker push $DOCKERHUB_USERNAME/dkpt-frontend:latest
+          - echo "✅ Production deployed — sha-$SHORT_SHA promoted to :latest"
 
   services:
     docker:
-      memory: 2048
+      memory: 3072
 
   caches:
     dotnetcore: backend/**/obj
 
+# ============================================
+# Pipelines
+# ============================================
 pipelines:
+
   # ============================================
-  # CI — Toutes les branches (build & test)
+  # CI — Feature branches (build & test uniquement)
   # ============================================
-pipelines:
   default:
     - step:
         <<: *build-test-backend
@@ -195,27 +169,25 @@ pipelines:
           - linux
 
   # ============================================
-  # CD — Par branche
+  # branches: main — Pipeline BODM complet
   # ============================================
-  # branches:
-  #   # ---- Staging (develop) ----
-  #   develop:
-  #     - step: *build-test-backend
-  #     - step: *build-frontend
-  #     - step: *docker-build-push-staging
-  #     - step: *deploy-staging
+  # Flux : CI → Docker build :sha → Deploy staging → Deploy prod (manual)
+  # Une seule image construite, promue de staging vers production.
+  # Note : Bitbucket ne supporte pas le chaînage inter-pipelines.
+  #        CI et CD cohabitent dans ce même bloc (différence vs GitHub/GitLab/Azure).
+  # ============================================
+  branches:
+    main:
+      - step: *build-test-backend     # 1. CI — Backend
+      - step: *build-frontend         # 2. CI — Frontend
+      - step: *docker-build-sha       # 3. BUILD ONCE → :sha-{8chars}
+      - step: *deploy-staging         # 4. DEPLOY 1 → staging + retag :staging
+      - step: *deploy-prod            # 5. DEPLOY 2 → production (manual) + retag :latest
 
-  #   # ---- Production (main) ----
-  #   main:
-  #     - step: *build-test-backend
-  #     - step: *build-frontend
-  #     - step: *docker-build-push-prod
-  #     - step: *deploy-prod
-
-  # # ============================================ 
-  # # PR Check — Vérification des Pull Requests
-  # # ============================================
-  # pull-requests:
-  #   '**':
-  #     - step: *build-test-backend
-  #     - step: *build-frontend
+  # ============================================
+  # PR Check — Vérification des Pull Requests
+  # ============================================
+  pull-requests:
+    '**':
+      - step: *build-test-backend
+      - step: *build-frontend

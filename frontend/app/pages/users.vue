@@ -65,8 +65,9 @@ async function createUser() {
     toast.add({ title: 'Utilisateur créé', color: 'success', icon: 'i-lucide-check-circle' })
     showCreateModal.value = false
     refresh()
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible de créer', color: 'error' })
+  } catch (err: unknown) {
+    const msg = (err as { data?: { message?: string } })?.data?.message
+    toast.add({ title: 'Erreur', description: msg || 'Impossible de créer', color: 'error' })
   } finally {
     creating.value = false
   }
@@ -95,8 +96,9 @@ async function updateUser() {
     toast.add({ title: 'Rôle modifié', color: 'success', icon: 'i-lucide-check-circle' })
     showEditModal.value = false
     refresh()
-  } catch (err: any) {
-    toast.add({ title: 'Erreur', description: err?.data?.message || 'Impossible de modifier', color: 'error' })
+  } catch (err: unknown) {
+    const msg = (err as { data?: { message?: string } })?.data?.message
+    toast.add({ title: 'Erreur', description: msg || 'Impossible de modifier', color: 'error' })
   } finally {
     saving.value = false
   }

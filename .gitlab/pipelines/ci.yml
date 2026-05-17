@@ -1,18 +1,23 @@
 # ============================================
 # DKPT — GitLab CI : Pipeline enfant CI
 # ============================================
-# Build & Test du backend (.NET 9) et du frontend (Nuxt 4)
-# Déclenché par l'orchestrateur parent (.gitlab-ci.yml)
+# Architecture : Build Once, Deploy Many (BODM)
+# Ce pipeline CI construit et pousse l'image Docker une seule fois
+# avec le tag :sha-{CI_COMMIT_SHORT_SHA}.
+# Les pipelines CD (cd-staging, cd-prod) pull cette image — pas de rebuild.
 #
 # Équivalent de : .github/workflows/ci.yml
 # ============================================
 
 stages:
   - build-test
+  - docker
 
 variables:
   DOTNET_VERSION: "9.0"
   NODE_VERSION: "22"
+  DOCKER_BACKEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-backend
+  DOCKER_FRONTEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-frontend
 
 # ============================================
 # Job 1 — Backend Build & Test
@@ -40,7 +45,6 @@ frontend-lint-build:
   script:
     - cd frontend
     - npm ci --cache .npm
-    - npm run lint -- --fix
     - npm run lint
     - npm run build
   cache:
@@ -48,3 +52,27 @@ frontend-lint-build:
     paths:
       - frontend/.npm/
       - frontend/node_modules/
+
+# ============================================
+# Job 3 — Docker Build & Push (:sha-xxxxx)
+# ============================================
+# BUILD ONCE — tag :sha-{CI_COMMIT_SHORT_SHA}
+# Les pipelines CD récupèrent cette image sans la reconstruire.
+docker-build-sha:
+  stage: docker
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  script:
+    - echo "🐳 Building images with tag sha-${CI_COMMIT_SHORT_SHA}"
+    # Backend
+    - docker build -t $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./backend
+    - docker push $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
+    # Frontend
+    - docker build -t $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./frontend
+    - docker push $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
+    - echo "✅ Images pushed with tag sha-${CI_COMMIT_SHORT_SHA}"

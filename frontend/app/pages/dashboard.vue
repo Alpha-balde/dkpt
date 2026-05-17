@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js'
+import type { TooltipItem } from 'chart.js'
 import type { Member, Payment, PagedResult } from '~/types'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
@@ -50,7 +51,7 @@ const { data: recentPayments } = await useAsyncData('dashboard-recent-payments',
 // Cotisations stats for arrears count
 const { data: arrearsCotis, refresh: refreshArrears } = await useAsyncData(
   'dashboard-arrears',
-  () => apiFetch<PagedResult<any>>(`/Cotisations?page=1&pageSize=1&status=Pas en ordre&year=${selectedYear.value}`)
+  () => apiFetch<PagedResult<{ id: string }>>(`/Cotisations?page=1&pageSize=1&status=Pas en ordre&year=${selectedYear.value}`)
 )
 
 const totalMembers = computed(() => membersData.value?.totalCount || 0)
@@ -126,7 +127,7 @@ const barChartData = computed(() => ({
     data: monthlyData.value,
     backgroundColor: '#22d3ee',
     borderRadius: { topLeft: 6, topRight: 6 },
-    borderSkipped: 'bottom'
+    borderSkipped: 'bottom' as const
   }]
 }))
 
@@ -137,7 +138,7 @@ const barChartOptions = {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx: any) => `${ctx.parsed.y.toLocaleString('fr-FR')} GNF`
+        label: (ctx: TooltipItem<'bar'>) => `${(ctx.parsed.y ?? 0).toLocaleString('fr-FR')} GNF`
       }
     }
   },
@@ -145,7 +146,7 @@ const barChartOptions = {
     y: {
       beginAtZero: true,
       ticks: {
-        callback: (val: any) => `${(val / 1000).toFixed(0)}k`
+        callback: (val: number | string) => `${(Number(val) / 1000).toFixed(0)}k`
       },
       grid: { color: '#f3f4f6' }
     },

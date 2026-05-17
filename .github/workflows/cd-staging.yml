@@ -1,11 +1,15 @@
 # ============================================
 # DKPT — Pipeline CD Staging (GitHub Actions)
 # ============================================
-# Déclenché après le succès du workflow CI sur develop
-# Jobs : docker (build & push :staging) → deploy (SSH VPS staging)
+# Architecture : Build Once, Deploy Many (BODM)
+# Déclenché après le succès du CI (workflow_run sur main).
+# Jobs : deploy (pull :sha + SSH deploy) → retag :staging
+#
+# Aucun docker build ici — l'image vient du job docker-build-sha du CI.
+# Le sha est récupéré via github.event.workflow_run.head_sha.
 #
 # Plateforme : GitHub Actions
-# Environnement : Staging
+# Environnement : Staging — https://staging.dkpt.soguimod.com
 # Comparaison : voir docs/ci-comparison/github-actions.md
 # ============================================
 
@@ -13,6 +17,10 @@ name: DKPT CD — Staging
 
 on:
   workflow_dispatch:
+    inputs:
+      sha:
+        description: 'SHA complet du commit à déployer (laisser vide pour le HEAD)'
+        required: false
   workflow_run:
     workflows: ["DKPT CI"]
     types: [completed]
@@ -24,65 +32,24 @@ env:
 
 jobs:
   # ============================================
-  # Job 1 — Docker Build & Push (tag :staging)
-  # ============================================
-  docker:
-    name: Docker Build & Push (Staging)
-    runs-on: ubuntu-24.04-arm
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # ---- Backend Image ----
-      - name: Build & Push Backend Image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.DOCKER_BACKEND_IMAGE }}:staging
-            ${{ env.DOCKER_BACKEND_IMAGE }}:staging-${{ github.event.workflow_run.head_sha || github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # ---- Frontend Image ----
-      - name: Build & Push Frontend Image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          platforms: linux/arm64
-          push: true
-          tags: |
-            ${{ env.DOCKER_FRONTEND_IMAGE }}:staging
-            ${{ env.DOCKER_FRONTEND_IMAGE }}:staging-${{ github.event.workflow_run.head_sha || github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ============================================
-  # Job 2 — Deploy to Staging VPS
+  # Job 1 — Deploy to Staging VPS
   # ============================================
   deploy:
-    name: Deploy to Staging 
+    name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: docker
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
     environment: Dev
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Compute short SHA
+        id: sha
+        run: |
+          FULL_SHA="${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}"
+          echo "short=$(echo $FULL_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+          echo "full=$FULL_SHA" >> $GITHUB_OUTPUT
 
       - name: Prepare deployment directory
         uses: appleboy/ssh-action@v1
@@ -91,7 +58,7 @@ jobs:
           username: ${{ secrets.VPS_STAGING_USER }}
           key: ${{ secrets.VPS_STAGING_SSH_KEY }}
           script: |
-            sudo mkdir -p /opt/dkpt/caddy
+            sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed
             sudo rm -rf /opt/dkpt/nginx
             sudo chown -R $(whoami):$(whoami) /opt/dkpt
 
@@ -104,7 +71,7 @@ jobs:
           source: "docker-compose.prod.yml,caddy/Caddyfile,scripts/,docker/seed/"
           target: "/opt/dkpt"
 
-      - name: Generate .env on VPS
+      - name: Generate .env on VPS (IMAGE_TAG=sha-xxxxx)
         uses: appleboy/ssh-action@v1
         env:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
@@ -116,17 +83,51 @@ jobs:
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           NUXT_PUBLIC_API_BASE: ${{ secrets.NUXT_PUBLIC_API_BASE }}
           SITE_ADDRESS: ${{ secrets.SITE_ADDRESS }}
+          IMAGE_TAG: sha-${{ steps.sha.outputs.short }}
         with:
           host: ${{ secrets.VPS_STAGING_HOST }}
           username: ${{ secrets.VPS_STAGING_USER }}
           key: ${{ secrets.VPS_STAGING_SSH_KEY }}
-          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET_KEY,JWT_ISSUER,JWT_AUDIENCE,CORS_ORIGINS,NUXT_PUBLIC_API_BASE,SITE_ADDRESS
+          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,JWT_SECRET_KEY,JWT_ISSUER,JWT_AUDIENCE,CORS_ORIGINS,NUXT_PUBLIC_API_BASE,SITE_ADDRESS,IMAGE_TAG
           script: bash /opt/dkpt/scripts/generate-env.sh
 
-      - name: Deploy via SSH
+      - name: Deploy via SSH (pull :sha + up)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_STAGING_HOST }}
           username: ${{ secrets.VPS_STAGING_USER }}
           key: ${{ secrets.VPS_STAGING_SSH_KEY }}
           script: bash /opt/dkpt/scripts/deploy.sh
+
+  # ============================================
+  # Job 2 — Retag :staging (BODM — promote sha image)
+  # ============================================
+  retag:
+    name: Retag :staging
+    runs-on: ubuntu-24.04-arm
+    needs: deploy
+
+    steps:
+      - name: Compute short SHA
+        id: sha
+        run: |
+          FULL_SHA="${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}"
+          echo "short=$(echo $FULL_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Retag Backend :sha → :staging
+        run: |
+          docker pull ${{ env.DOCKER_BACKEND_IMAGE }}:sha-${{ steps.sha.outputs.short }}
+          docker tag ${{ env.DOCKER_BACKEND_IMAGE }}:sha-${{ steps.sha.outputs.short }} ${{ env.DOCKER_BACKEND_IMAGE }}:staging
+          docker push ${{ env.DOCKER_BACKEND_IMAGE }}:staging
+
+      - name: Retag Frontend :sha → :staging
+        run: |
+          docker pull ${{ env.DOCKER_FRONTEND_IMAGE }}:sha-${{ steps.sha.outputs.short }}
+          docker tag ${{ env.DOCKER_FRONTEND_IMAGE }}:sha-${{ steps.sha.outputs.short }} ${{ env.DOCKER_FRONTEND_IMAGE }}:staging
+          docker push ${{ env.DOCKER_FRONTEND_IMAGE }}:staging

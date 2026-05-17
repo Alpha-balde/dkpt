@@ -1,13 +1,16 @@
 # ============================================
-# DKPT — Pipeline CI (Intégration Continue)
+# DKPT — Pipeline CI (GitHub Actions)
 # ============================================
-# Déclenché sur push vers main ou develop
-# Job : build-and-test (backend .NET + frontend Nuxt)
-# Le déploiement est géré par cd-staging.yml et cd-prod.yml
+# Architecture : Build Once, Deploy Many (BODM)
+# Jobs : build-and-test → docker-build-sha
+#
+# Le CI construit et pousse l'image Docker une seule fois
+# avec le tag :sha-{8chars}. Les pipelines CD (cd-staging, cd-prod)
+# pull cette image — pas de rebuild.
 #
 # Plateforme : GitHub Actions
 # Équivalents : .gitlab/pipelines/ci.yml, .azuredevops/ci.yml,
-#               bitbucket-pipelines.yml (section default)
+#               bitbucket-pipelines.yml (sections 1-3 de branches: main:)
 # Comparaison : voir docs/ci-comparison/github-actions.md
 # ============================================
 
@@ -16,7 +19,7 @@ name: DKPT CI
 on:
   workflow_dispatch:
 
-  push: 
+  push:
     branches: [main]
     paths-ignore:
       - "README.md"
@@ -29,11 +32,13 @@ on:
 
 env:
   DOTNET_VERSION: "9.0.x"
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
+  DOCKER_BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-backend
+  DOCKER_FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-frontend
 
 jobs:
   # ============================================
-  # Job — Build & Test
+  # Job 1 — Build & Test
   # ============================================
   build-and-test:
     name: Build & Test
@@ -73,7 +78,61 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Lint frontend
+        run: npm run lint
+        working-directory: frontend
+
       - name: Build frontend
         run: npm run build
         working-directory: frontend
 
+  # ============================================
+  # Job 2 — Docker Build & Push (:sha-xxxxx)
+  # ============================================
+  # BUILD ONCE — exécuté uniquement sur push (pas sur PR)
+  # Tag : sha-{8 premiers chars du SHA du commit}
+  docker-build-sha:
+    name: Docker Build & Push :sha
+    runs-on: ubuntu-24.04-arm
+    needs: build-and-test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=$(echo '${{ github.sha }}' | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ---- Backend Image ----
+      - name: Build & Push Backend :sha
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ env.DOCKER_BACKEND_IMAGE }}:sha-${{ steps.sha.outputs.short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ---- Frontend Image ----
+      - name: Build & Push Frontend :sha
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ env.DOCKER_FRONTEND_IMAGE }}:sha-${{ steps.sha.outputs.short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
