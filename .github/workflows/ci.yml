@@ -17,12 +17,12 @@ on:
   workflow_dispatch:
 
   push: 
-    branches: [main, develop]
+    branches: [main]
     paths-ignore:
       - "README.md"
       - "docs/**"
   pull_request:
-    branches: [main, develop]
+    branches: [main]
     paths-ignore:
       - "README.md"
       - "docs/**"

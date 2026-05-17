@@ -9,10 +9,10 @@
 | Fichier | Rôle | Déclencheur |
 |---------|------|-------------|
 | `ci.yml` | Build & Test (backend + frontend) | Push/PR sur `main` |
-| `cd-staging.yml` | Build Docker + Deploy staging | Après CI sur `develop` |
+| `cd-staging.yml` | Build Docker + Deploy staging | Après CI sur `main` |
 | `cd-prod.yml` | Build Docker + Deploy production | Après CI sur `main` |
 | `pr-check.yml` | Vérification PR (2 jobs parallèles) | Pull Request |
-| `mirror.yml` | Synchronisation vers les autres plateformes | Push sur `main`/`develop` |
+| `mirror.yml` | Synchronisation vers les autres plateformes | Push sur `main` |
 
 ### Variantes (expérimentations pour le mémoire)
 
