@@ -41,8 +41,7 @@ definitions:
         caches:
           - dotnetcore
         script:
-          - COMMIT_MSG=$(git log -1 --pretty=%B)
-          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; fi
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; }'
           - cd backend
           - dotnet restore
           - dotnet build --no-restore --configuration Release
@@ -56,8 +55,7 @@ definitions:
         caches:
           - node
         script:
-          - COMMIT_MSG=$(git log -1 --pretty=%B)
-          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; fi
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; }'
           - cd frontend
           - npm ci
           - npm run lint
@@ -71,8 +69,7 @@ definitions:
         services:
           - docker
         script:
-          - COMMIT_MSG=$(git log -1 --pretty=%B)
-          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; fi
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           - echo "🐳 Building images with tag sha-$SHORT_SHA"
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -90,8 +87,7 @@ definitions:
         services:
           - docker
         script:
-          - COMMIT_MSG=$(git log -1 --pretty=%B)
-          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; fi
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # Setup SSH
           - mkdir -p ~/.ssh && chmod 700 ~/.ssh
@@ -128,8 +124,7 @@ definitions:
         services:
           - docker
         script:
-          - COMMIT_MSG=$(git log -1 --pretty=%B)
-          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; fi
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # Setup SSH
           - mkdir -p ~/.ssh && chmod 700 ~/.ssh

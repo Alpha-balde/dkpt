@@ -228,17 +228,13 @@ GitHub et GitLab). La vérification est implémentée en **bash** en tête de
 chaque step, en lisant le message du dernier commit via `git log`.
 
 ```yaml
-# bitbucket-pipelines.yml — example sur un step
+# bitbucket-pipelines.yml — exemple sur un step
 - step: &build-test-backend
     name: 'Backend — Build & Test'
     image: mcr.microsoft.com/dotnet/sdk:9.0
     script:
       # Guard plateforme : vérification du mot-clé dans le message de commit
-      - COMMIT_MSG=$(git log -1 --pretty=%B)
-      - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then
-          echo "⏩ [ci:bitbucket] absent — step ignoré";
-          exit 0;
-        fi
+      - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; }'
       # Suite normale du step...
       - cd backend && dotnet restore && dotnet build ...
 ```
@@ -257,10 +253,43 @@ Ce pattern est appliqué à **tous les steps** du pipeline `branches: main:` :
 - ❌ Pas déclaratif — la logique de contrôle est mélangée avec le script métier
 - ❌ Doit être répété sur chaque step (pas de point de contrôle central)
 
+#### Bug découvert : `[[` interprété comme séquence YAML
+
+Lors de l'implémentation initiale, le guard utilisait la syntaxe bash `[[ ]]` :
+
+```yaml
+# ❌ MAUVAIS — erreur Bitbucket : "Missing or empty command string"
+- COMMIT_MSG=$(git log -1 --pretty=%B)
+- if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "..."; exit 0; fi
+```
+
+Bitbucket a retourné l'erreur :
+```
+Configuration error at [pipelines > branches > main > 2 > step > script > 9].
+Missing or empty command string.
+```
+
+Le parseur YAML de Bitbucket interprète `[[` comme le début d'une **séquence
+YAML imbriquée** (flow sequence), corrompant la structure du script. La présence
+de `[ci:bitbucket]` (avec `[` et `]`) aggrave le problème.
+
+Correction : encapsuler le guard dans une **chaîne YAML single-quotée** et
+utiliser `grep -q` à la place de `[[ ]]` :
+
+```yaml
+# ✅ CORRECT — YAML single-quote + grep évite toute ambiguïté
+- 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ absent"; exit 0; }'
+```
+
+La chaîne YAML single-quotée (`'...'`) neutralise tous les caractères spéciaux
+YAML (`[`, `]`, `{`, `}`). Bash reçoit le contenu tel quel et l'exécute.
+
 > **Observation pour le mémoire** : Cette limitation de Bitbucket illustre
 > un manque de maturité par rapport à ses concurrents. L'absence d'une variable
-> `$BITBUCKET_COMMIT_MESSAGE` et d'un mécanisme de conditions globales force
-> à dupliquer la logique de guard dans chaque step, réduisant la maintenabilité.
+> `$BITBUCKET_COMMIT_MESSAGE`, d'un mécanisme de conditions globales, ET
+> les contraintes du parseur YAML sur les caractères `[` et `]` dans les scripts
+> forcent à des contournements non triviaux, réduisant la lisibilité et la
+> maintenabilité de la configuration.
 
 ---
 
