@@ -43,7 +43,7 @@ Vous devez définir **obligatoirement** les clés suivantes dans les "Settings >
 - **VPS_STAGING_HOST**, **VPS_STAGING_USER**, **VPS_STAGING_SSH_KEY** : Identifiants pour le serveur de Staging.
 - **POSTGRES_USER**, **POSTGRES_PASSWORD**, **POSTGRES_DB** : Identifiants pour la base de données.
 - **JWT_SECRET_KEY**, **JWT_ISSUER**, **JWT_AUDIENCE** : Configuration des tokens d'authentification.
-- **CORS_ORIGINS** : Les URL autorisées pour les requêtes API (ex: `https://dkpt.example.com`).
+- **CORS_ORIGINS** : Les URL autorisées pour les requêtes API (ex: `https://dkpt.soguimod.com`).
 - **NUXT_PUBLIC_API_BASE** : L'URL publique de l'API pour le front-end.
 - **DOCKERHUB_USERNAME**, **DOCKERHUB_TOKEN** : Identifiants pour publier les images Docker sur le registre public.
 

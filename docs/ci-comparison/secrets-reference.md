@@ -41,9 +41,9 @@
 | `JWT_SECRET_KEY` | `min 32 chars` | ✅ Oui |
 | `JWT_ISSUER` | `dkpt-api` | Non |
 | `JWT_AUDIENCE` | `dkpt-client` | Non |
-| `CORS_ORIGINS` | `https://dkpt.example.com` | Non |
+| `CORS_ORIGINS` | `https://dkpt.soguimod.com` | Non |
 | `NUXT_PUBLIC_API_BASE` | `/api` | Non |
-| `SITE_ADDRESS` | `dkpt.example.com` | Non |
+| `SITE_ADDRESS` | `dkpt.soguimod.com` | Non |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | `InstrumentationKey=...` | ✅ Oui |
 
 #### 🔄 Mirroring (GitHub → plateformes)

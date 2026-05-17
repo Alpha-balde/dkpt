@@ -18,10 +18,9 @@ definitions:
   steps:           # Steps réutilisables via YAML anchors (&nom / *nom)
 
 pipelines:
-  default:         # CI — Toutes les branches
+  default:         # CI — Toutes les branches (sauf main)
   branches:
-    develop:       # CD Staging
-    main:          # CD Production
+    main:          # CI + Docker build sha + CD Staging + CD Prod (manual)
   pull-requests:
     '**':          # PR Check
 ```
@@ -30,9 +29,8 @@ pipelines:
 
 | Section | Rôle | Équivalent GitHub Actions |
 |---------|------|--------------------------|
-| `default:` | CI sur toutes les branches | `ci.yml` |
-| `branches: develop:` | CD staging | `cd-staging.yml` |
-| `branches: main:` | CD production | `cd-prod.yml` |
+| `default:` | CI sur les branches de feature | `ci.yml` |
+| `branches: main:` | CI + Docker build sha + CD staging + CD prod (manual) | `ci.yml` + `cd-staging.yml` + `cd-prod.yml` |
 | `pull-requests: '**':` | PR check | `pr-check.yml` |
 
 ---
@@ -58,6 +56,7 @@ pipelines:
 - **Marketplace limité** : Moins de pipes que d'actions GitHub ou de tasks Azure
 - **Artefacts 14 jours** : La durée la plus courte
 - **Steps séquentiels** : Sur le pipeline `branches: main:`, les steps s'exécutent les uns après les autres, pas en parallèle
+- **Build Once Deploy Many impossible nativement** : Les types de pipelines (`default:`, `branches:`, `pull-requests:`) sont mutuellement exclusifs par branche — aucun mécanisme de chaînage inter-pipelines n'existe
 
 ## Spécificités techniques
 
@@ -261,8 +260,68 @@ Un self-hosted runner Linux a été configuré pour contourner la limitation des
 
 ---
 
+## Limitation architecturale : Build Once, Deploy Many impossible
+
+Le pattern **Build Once, Deploy Many (BODM)** consiste à construire l'image Docker **une seule fois** dans le CI (taguée avec le SHA du commit), puis à la **promouvoir** à travers les environnements (staging → production) sans jamais la reconstruire.
+
+Cette stratégie est **fondamentalement incompatible** avec le modèle de Bitbucket Pipelines.
+
+### Pourquoi ?
+
+Les types de pipelines dans Bitbucket (`default:`, `branches:`, `pull-requests:`) sont **mutuellement exclusifs par branche** :
+
+```
+Push sur main
+    ├── branches: main:   ✅ se déclenche
+    └── default:          ⛔ ignoré (ne tourne PAS si une règle branches: existe)
+```
+
+Si l'on place le Docker build dans `default:` (CI), l'image `:sha-xxxxx` est construite et poussée sur Docker Hub. Mais quand `branches: main:` se déclenche pour déployer en production, `default:` **n'a pas tourné** — l'image `:sha` n'existe pas sur Docker Hub.
+
+À l'inverse des autres plateformes :
+
+| Plateforme | Mécanisme de chaînage CI → CD | Garantie d'ordre |
+|------------|-------------------------------|:----------------:|
+| **Azure DevOps** | `pipeline resources` + `trigger` | ✅ Explicite |
+| **GitLab CI** | Parent-child + `needs:` | ✅ Explicite |
+| **GitHub Actions** | `workflow_run` + `head_sha` | ✅ Explicite |
+| **Bitbucket** | ❌ Aucun mécanisme inter-pipelines | ⛔ Impossible |
+
+### Contournement adopté
+
+Dans le projet DKPT, **seule la branche `main`** est utilisée comme branche de déploiement (staging et production sont déclenchés depuis `main`, comme sur Azure DevOps). Ce choix rend le contournement plus satisfaisant :
+
+Tout le pipeline de déploiement est placé dans `branches: main:` avec des steps séquentiels :
+
+```
+branches: main:
+  1. Backend Build & Test
+  2. Frontend Build
+  3. Docker build → :sha-{8chars} → push   ← BUILD ONCE
+  4. Deploy staging (pull :sha)            ← DEPLOY 1
+  5. Retag :staging → push
+  6. Deploy prod (manual, pull :sha)       ← DEPLOY 2 (même image)
+  7. Retag :latest → push
+```
+
+Puisque les steps s'exécutent dans le même contexte de pipeline, l'image `:sha` est construite **une seule fois** et réutilisée pour les deux environnements — ce qui constitue bien du BODM.
+
+Ceci garantit que l'image déployée en production est **exactement la même** que celle validée en staging, traçable via son tag `:sha-{8chars}`.
+
+> **Ce qui reste différent d'Azure/GitLab/GitHub** : il n'y a pas de pipelines CI et CD
+> **séparés et indépendants**. Le CI (build & test) et le CD (docker + deploy) vivent dans
+> le même bloc `branches: main:`, ce qui empile toutes les étapes de manière monolithique.
+> Sur les autres plateformes, le CI peut échouer sans déclencher le CD, et ils sont
+> observables indépendamment dans l'UI. Sur Bitbucket, c'est une seule exécution.
+
+> **Point de comparaison pour le mémoire** : Cette limitation est directement liée au choix
+> architectural de Bitbucket d'imposer un fichier unique avec des sections indépendantes.
+> Ce modèle simplifie la configuration initiale mais sacrifie la flexibilité d'orchestration
+> avancée. C'est l'illustration concrète du compromis entre **simplicité de mise en place**
+> et **expressivité du pipeline**.
+
+---
+
 ## Comparaison avec les autres plateformes
 
 → Voir [README.md](README.md) pour le tableau synthèse
-
-

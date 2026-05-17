@@ -36,8 +36,8 @@ Le parent déclenche les enfants via `trigger: include:`. Chaque enfant est un p
 
 | Pipeline | Rôle | Déclencheur |
 |----------|------|-------------|
-| `ci.yml` | Lint, Build & Test | Push sur `main`/`develop`/toute branche |
-| `cd-staging.yml` | Docker + Deploy staging | Après CI sur `develop` |
+| `ci.yml` | Lint, Build & Test | Push sur `main` |
+| `cd-staging.yml` | Docker + Deploy staging | Après CI sur `main` |
 | `cd-prod.yml` | Docker + Deploy prod (manual) | Après CI sur `main` |
 | `pr-check.yml` | Vérification MR | `merge_request_event` |
 

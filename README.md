@@ -109,7 +109,7 @@ Le projet implémente le même pipeline CI/CD sur **4 plateformes** pour compara
 GitHub (source de vérité)
     ├── miroir → GitLab      (.gitlab-ci.yml + .gitlab/pipelines/)
     ├── miroir → Bitbucket   (bitbucket-pipelines.yml)
-    └── miroir → Azure Repos (.azuredevops/)
+    └── GitHub App → Azure DevOps (.azuredevops/) [connexion native]
 ```
 
 ### Pipelines par plateforme
@@ -117,7 +117,7 @@ GitHub (source de vérité)
 | Pipeline | GitHub Actions | GitLab CI | Azure DevOps | Bitbucket |
 |----------|:-:|:-:|:-:|:-:|
 | **CI** | `ci.yml` | `pipelines/ci.yml` | `ci.yml` | section `default` |
-| **CD Staging** | `cd-staging.yml` | `pipelines/cd-staging.yml` | `cd-staging.yml` | section `branches: develop` |
+| **CD Staging** | `cd-staging.yml` | `pipelines/cd-staging.yml` | `cd-staging.yml` | section `branches: main` (avant deploy prod) |
 | **CD Production** | `cd-prod.yml` | `pipelines/cd-prod.yml` | `cd-prod.yml` | section `branches: main` |
 | **PR Check** | `pr-check.yml` | `pipelines/pr-check.yml` | `pr-check.yml` | section `pull-requests` |
 | **Mirror** | `mirror.yml` | — | — | — |

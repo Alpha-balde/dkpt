@@ -45,7 +45,7 @@ deploy-production:
   image: alpine:latest
   environment:
     name: production
-    url: https://dkpt.example.com
+    url: https://dkpt.soguimod.com
   when: manual  # Approbation manuelle requise pour la production
   before_script:
     - apk add --no-cache openssh-client

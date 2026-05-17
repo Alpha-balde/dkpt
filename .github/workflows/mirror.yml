@@ -2,9 +2,10 @@
 # DKPT — Mirror Repository
 # ============================================
 # Synchronise le repo GitHub vers les plateformes miroirs :
-#   - GitLab
-#   - Bitbucket
-#   - Azure Repos
+#   - GitLab   (SSH push — pull mirror natif = Premium uniquement)
+#   - Bitbucket (SSH push — pas de pull mirror natif)
+#
+# Note : Azure DevOps utilise GitHub App (connexion directe, pas de mirror).
 #
 # Déclenché sur chaque push vers main
 # ============================================
@@ -40,11 +41,15 @@ jobs:
           ssh_private_key: ${{ secrets.GITLAB_SSH_KEY }}
 
       # ---- Bitbucket ----
+      # Bitbucket ne propose pas de pull mirror natif.
+      # Ce step pousse le code depuis GitHub vers Bitbucket via SSH.
       - name: Mirror to Bitbucket
         uses: pixta-dev/repository-mirroring-action@v1
         with:
           target_repo_url: git@bitbucket.org:alpha-balde/dkpt-mirror.git
           ssh_private_key: ${{ secrets.BITBUCKET_SSH_KEY }}
 
-      # ---- Azure Repos ----
-      # plus besoin de mirror, car on utilise directement le repo github avec Github Apps pour connecter les plateformes 
+      # ---- Azure DevOps ----
+      # Pas de mirroring SSH. Azure DevOps se connecte directement au
+      # repo GitHub via GitHub App (configuré dans l'UI Azure DevOps).
+      # Déclenchement instantané sur push GitHub, aucune clé SSH requise.
