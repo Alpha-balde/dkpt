@@ -80,9 +80,7 @@ jobs:
 
   docker-build-sha:
     needs: build-and-test
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci:github]'))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci:github]'))
 ```
 
 **CD Staging et CD Production** : Ces workflows se déclenchent via
@@ -90,11 +88,92 @@ jobs:
 `[ci:github]`), le CD ne démarre jamais — **la condition est transitivement
 appliquée** sans duplication.
 
+#### Limitation : pas de variable réutilisable pour les conditions `if:`
+
+Une question naturelle est de factoriser la condition dans une variable pour
+éviter la duplication entre les jobs. Cette approche **ne fonctionne pas**
+dans GitHub Actions :
+
+```yaml
+# ❌ NE FONCTIONNE PAS
+env:
+  IS_GITHUB_TARGET: ${{ contains(github.event.head_commit.message, '[ci:github]') }}
+
+jobs:
+  build-and-test:
+    if: env.IS_GITHUB_TARGET == 'true'  # ← contexte env: non disponible ici !
+```
+
+Le contexte `env:` n'est **pas accessible** dans les conditions `if:` au niveau
+job. GitHub Actions restreint les contextes disponibles à ce niveau :
+
+| Contexte | Disponible dans `if:` job |
+|----------|:-:|
+| `github.*` | ✅ |
+| `needs.*` | ✅ |
+| `inputs.*` | ✅ |
+| `vars.*` | ✅ |
+| `env.*` | ❌ Non disponible |
+
+La seule solution DRY est un **job dédié avec `outputs`** :
+
+```yaml
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]') }}
+    steps:
+      - run: echo "Platform check"
+
+  build-and-test:
+    needs: check
+    if: needs.check.outputs.run == 'true'   # DRY ✅
+
+  docker-build-sha:
+    needs: [check, build-and-test]
+    if: needs.check.outputs.run == 'true'   # DRY ✅
+```
+
+Ce pattern ajoute un job supplémentaire (~5-10s de latence). Pour seulement
+2 jobs concernés, la **duplication de la condition reste acceptable** et
+évite une complexité inutile.
+
+> **Comparaison avec GitLab** : GitLab CI permet de définir des variables
+> globales réutilisables dans les `rules:` sans job intermédiaire ni overhead.
+> C'est une limitation architecturale de GitHub Actions.
+
+#### Bug découvert : `if: |` évalué comme toujours vrai
+
+Lors de l'implémentation initiale, la condition a été écrite avec la syntaxe
+YAML multi-ligne `|` (bloc littéral) :
+
+```yaml
+# ❌ MAUVAIS — le CI s'est quand même déclenché
+if: |
+  github.event_name == 'workflow_dispatch' ||
+  contains(github.event.head_commit.message, '[ci:github]')
+```
+
+GitHub Actions a évalué cette expression comme une **string non vide**
+(et non comme une expression booléenne), qui vaut toujours `true` —
+le job s'exécutait donc à chaque push sans vérifier le mot-clé.
+
+Correction : expression sur **une seule ligne** (syntaxe correcte) :
+
+```yaml
+# ✅ CORRECT
+if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]')
+```
+
+> Commit de correction : `c503554`
+
 **Évaluation** :
 - ✅ Support natif, syntaxe YAML déclarative
 - ✅ Lisible et auto-documenté dans le fichier de configuration
 - ✅ `workflow_dispatch` toujours disponible pour déclenchement manuel
 - ✅ CD conditionnel sans modification des fichiers cd-staging/cd-prod
+- ⚠️ Condition dupliquée sur 2 jobs (limitation GitHub Actions — pas de variable réutilisable dans `if:` job)
 
 ---
 
