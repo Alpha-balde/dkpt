@@ -5,6 +5,12 @@
 # Il utilise le pattern "parent-child pipelines" pour
 # déclencher les pipelines enfants selon le contexte.
 #
+# Sélecteur de plateforme : ce pipeline ne s'exécute que si le
+# message de commit contient [ci:gitlab].
+# Exemples :
+#   git commit -m "fix: auth [ci:gitlab]"
+#   git commit -m "release: v1.2 [ci:gitlab]"
+#
 # Contrainte GitLab : ce fichier DOIT être à la racine
 # (ou le chemin configuré dans Settings → CI/CD → General)
 #
@@ -38,8 +44,7 @@ ci:
     include: .gitlab/pipelines/ci.yml
     strategy: depend
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /\[ci:gitlab\]/'
 
 # ============================================
 # Pipeline enfant — CD Staging
@@ -50,7 +55,7 @@ cd-staging:
     include: .gitlab/pipelines/cd-staging.yml
     strategy: depend
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /\[ci:gitlab\]/'
   needs: [ci]
 
 # ============================================
@@ -62,5 +67,5 @@ cd-prod:
     include: .gitlab/pipelines/cd-prod.yml
     strategy: depend
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /\[ci:gitlab\]/'
   needs: [ci]

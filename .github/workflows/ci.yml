@@ -8,6 +8,12 @@
 # avec le tag :sha-{8chars}. Les pipelines CD (cd-staging, cd-prod)
 # pull cette image — pas de rebuild.
 #
+# Sélecteur de plateforme : ce pipeline ne s'exécute que si le
+# message de commit contient [ci:github].
+# Exemples :
+#   git commit -m "fix: auth [ci:github]"
+#   git commit -m "release: v1.2 [ci:github]"
+#
 # Plateforme : GitHub Actions
 # Équivalents : .gitlab/pipelines/ci.yml, .azuredevops/ci.yml,
 #               bitbucket-pipelines.yml (sections 1-3 de branches: main:)
@@ -43,6 +49,9 @@ jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[ci:github]')
 
     steps:
       - name: Checkout code
@@ -95,7 +104,9 @@ jobs:
     name: Docker Build & Push :sha
     runs-on: ubuntu-24.04-arm
     needs: build-and-test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci:github]'))
 
     steps:
       - name: Checkout code

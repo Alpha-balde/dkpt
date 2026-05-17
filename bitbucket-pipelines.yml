@@ -6,6 +6,14 @@
 # Contrainte Bitbucket : un seul fichier à la racine.
 # Pas de chaînage inter-pipelines — tout est dans branches: main:
 #
+# Sélecteur de plateforme : les steps du pipeline main ne s'exécutent
+# que si le message de commit contient [ci:bitbucket].
+# Exemples :
+#   git commit -m "fix: auth [ci:bitbucket]"
+#   git commit -m "release: v1.2 [ci:bitbucket]"
+# Note : Bitbucket ne supporte pas les conditions natives sur le message
+# de commit — le guard est implémenté en bash (git log) en tête de step.
+#
 # Flux BODM dans branches: main:
 #   CI (build+test) → Docker build :sha → Deploy staging → Retag :staging
 #                                       → Deploy prod (manual) → Retag :latest
@@ -33,6 +41,8 @@ definitions:
         caches:
           - dotnetcore
         script:
+          - COMMIT_MSG=$(git log -1 --pretty=%B)
+          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; fi
           - cd backend
           - dotnet restore
           - dotnet build --no-restore --configuration Release
@@ -46,6 +56,8 @@ definitions:
         caches:
           - node
         script:
+          - COMMIT_MSG=$(git log -1 --pretty=%B)
+          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; fi
           - cd frontend
           - npm ci
           - npm run lint
@@ -59,13 +71,13 @@ definitions:
         services:
           - docker
         script:
+          - COMMIT_MSG=$(git log -1 --pretty=%B)
+          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; fi
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           - echo "🐳 Building images with tag sha-$SHORT_SHA"
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-          # Backend
           - docker build -t $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA ./backend
           - docker push $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
-          # Frontend
           - docker build -t $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA ./frontend
           - docker push $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA
           - echo "✅ Images pushed: sha-$SHORT_SHA"
@@ -78,6 +90,8 @@ definitions:
         services:
           - docker
         script:
+          - COMMIT_MSG=$(git log -1 --pretty=%B)
+          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; fi
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # Setup SSH
           - mkdir -p ~/.ssh && chmod 700 ~/.ssh
@@ -114,6 +128,8 @@ definitions:
         services:
           - docker
         script:
+          - COMMIT_MSG=$(git log -1 --pretty=%B)
+          - if [[ "$COMMIT_MSG" != *"[ci:bitbucket]"* ]]; then echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; fi
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # Setup SSH
           - mkdir -p ~/.ssh && chmod 700 ~/.ssh
