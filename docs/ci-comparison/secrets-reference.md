@@ -146,3 +146,82 @@
 4. **Principe du moindre privilège** : Chaque plateforme n'a accès qu'à ce dont elle a besoin
 
 > **Observation pour le mémoire** : La duplication manuelle des secrets sur 4 plateformes est le point faible majeur du multi-plateforme CI/CD. En production, un coffre-fort centralisé (Vault, Key Vault) avec injection dynamique serait indispensable.
+
+---
+
+## Mécanismes SSH natifs par plateforme
+
+Chaque plateforme a développé sa propre approche pour gérer les clés SSH de déploiement. Ces approches reflètent des philosophies architecturales différentes.
+
+### Tableau comparatif
+
+| Plateforme | Mécanisme | Où configurer | Chargement |
+|------------|:---------:|:-------------:|:----------:|
+| **GitHub Actions** | Secrets chiffrés | Repository → Secrets | Manuel (`echo "$KEY" > file`) |
+| **GitLab CI** | Variable type `File` | Settings → CI/CD → Variables | Semi-auto (GitLab écrit le fichier, `$VAR` = chemin) |
+| **Bitbucket** | SSH Keys natif | Repository Settings → Pipelines → SSH Keys | Automatique (avant chaque step) |
+| **Azure DevOps** | Service Connections | Project Settings → Service connections | Automatique (via tâche dédiée) |
+
+### Philosophie par plateforme
+
+| Plateforme | Philosophie | Conséquence pratique |
+|------------|-------------|----------------------|
+| **GitHub Actions** | Flexibilité maximale — tout est scriptable | Plus de code bash, mais universel et portable |
+| **GitLab CI** | Types de variables enrichis | Moins de bash, mais dépendance au type `File` spécifique GitLab |
+| **Bitbucket** | Intégration native dédiée SSH | Zéro YAML pour le SSH, mais lié à l'écosystème Atlassian |
+| **Azure DevOps** | Gouvernance entreprise | Connexions réutilisables cross-projets, mais UI complexe |
+
+### Implémentation dans DKPT
+
+#### GitHub Actions
+```yaml
+- name: Setup SSH
+  run: |
+    mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+    chmod 600 ~/.ssh/id_rsa
+    ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+```
+
+#### GitLab CI
+```yaml
+before_script:
+  - eval $(ssh-agent -s)
+  - chmod 600 "$VPS_SSH_KEY"        # $VPS_SSH_KEY = chemin du fichier temp
+  - ssh-add "$VPS_SSH_KEY"           # GitLab a écrit la clé dans ce fichier
+  - echo "StrictHostKeyChecking=no" >> ~/.ssh/config
+```
+> Variable `VPS_SSH_KEY` de type **`File`** dans GitLab CI/CD Settings.
+
+#### Bitbucket
+```yaml
+script:
+  # SSH chargé automatiquement via Repository Settings → Pipelines → SSH Keys
+  - ssh $VPS_USER@$VPS_HOST "bash /opt/dkpt/scripts/deploy.sh"
+```
+> Aucune ligne de configuration SSH dans le YAML — Bitbucket injecte la clé automatiquement.
+
+#### Azure DevOps
+```yaml
+- task: SSH@0
+  inputs:
+    sshEndpoint: 'VPS-Production'   # Service connection configurée en UI
+    runOptions: 'script'
+    script: 'bash /opt/dkpt/scripts/deploy.sh'
+```
+> La clé SSH est encapsulée dans la **Service Connection** `VPS-Production`.
+
+### Leçons tirées de l'implémentation
+
+| Problème rencontré | Plateforme | Cause | Solution |
+|-------------------|:----------:|-------|----------|
+| `error in libcrypto` | GitLab + Bitbucket | CRLF Windows dans la clé SSH | GitLab : type `File` / Bitbucket : SSH Keys natif |
+| Variable SSH vide | GitLab | Variable de type `Variable` au lieu de `File` | Changer le type en `File` dans l'UI GitLab |
+| `Permission denied` | Bitbucket | Clé publique absente de `authorized_keys` sur VPS prod | Ajouter la clé publique Bitbucket sur chaque VPS cible |
+| DNS `Name does not resolve` | GitLab | Runner Docker bridge ne résout pas les noms de domaine | Utiliser l'IP directe dans `VPS_HOST` / `VPS_STAGING_HOST` |
+
+> **Conclusion pour le mémoire** : L'absence de standardisation des mécanismes SSH entre plateformes
+> est une source de friction significative dans un contexte multi-plateforme CI/CD.
+> Bitbucket offre l'expérience la plus simple (SSH Keys natif), GitLab le plus de contrôle
+> (types de variables), GitHub la plus grande portabilité, et Azure DevOps la meilleure
+> gouvernance d'entreprise. Le choix dépend du contexte organisationnel.
