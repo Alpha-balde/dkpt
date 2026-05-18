@@ -92,7 +92,7 @@ definitions:
     # DEPLOY 1 — pull l'image :sha déjà sur Docker Hub, déploie, retag :staging
     - step: &deploy-staging
         name: 'Deploy to Staging + Retag :staging'
-        deployment: staging
+        deployment: Staging
         runs-on:
           - self.hosted
           - linux
@@ -131,7 +131,7 @@ definitions:
     # DEPLOY 2 — même image :sha que staging, déploie en prod, retag :latest
     - step: &deploy-prod
         name: 'Deploy to Production + Retag :latest'
-        deployment: production
+        deployment: Prod
         trigger: manual
         runs-on:
           - self.hosted
