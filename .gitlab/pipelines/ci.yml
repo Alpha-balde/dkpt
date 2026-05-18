@@ -65,14 +65,30 @@ docker-build-sha:
     - docker:27-dind
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
+    # Cross-compilation ARM64 depuis runner AMD64
+    # Nécessaire car les VPS cibles sont linux/arm64
+    # (équivalent du runner ubuntu-24.04-arm de GitHub Actions)
+    TARGET_PLATFORM: "linux/arm64"
   before_script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    # Activer QEMU pour cross-compilation ARM64
+    - docker run --privileged --rm tonistiigi/binfmt --install arm64
+    - docker buildx create --use --name builder
+    - docker buildx inspect --bootstrap
   script:
-    - echo "🐳 Building images with tag sha-${CI_COMMIT_SHORT_SHA}"
-    # Backend — --network host nécessaire pour dotnet restore dans DinD (accès nuget.org)
-    - docker build --network host -t $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./backend
-    - docker push $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
-    # Frontend — --network host nécessaire pour npm install dans DinD
-    - docker build --network host -t $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./frontend
-    - docker push $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
-    - echo "✅ Images pushed with tag sha-${CI_COMMIT_SHORT_SHA}"
+    - echo "🐳 Building images (${TARGET_PLATFORM}) with tag sha-${CI_COMMIT_SHORT_SHA}"
+    # Backend — cross-compilation arm64 + --push direct (buildx ne supporte pas docker load + push séparé)
+    - docker buildx build
+        --platform ${TARGET_PLATFORM}
+        --network host
+        --push
+        -t $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
+        ./backend
+    # Frontend — idem
+    - docker buildx build
+        --platform ${TARGET_PLATFORM}
+        --network host
+        --push
+        -t $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
+        ./frontend
+    - echo "✅ ARM64 images pushed with tag sha-${CI_COMMIT_SHORT_SHA}"
