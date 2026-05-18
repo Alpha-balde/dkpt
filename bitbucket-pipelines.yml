@@ -38,6 +38,9 @@ definitions:
     - step: &build-test-backend
         name: 'Backend — Build & Test'
         image: mcr.microsoft.com/dotnet/sdk:9.0
+        runs-on:
+          - self.hosted
+          - linux
         caches:
           - dotnetcore
         script:
@@ -52,6 +55,9 @@ definitions:
     - step: &build-frontend
         name: 'Frontend — Lint & Build'
         image: node:22-alpine
+        runs-on:
+          - self.hosted
+          - linux
         caches:
           - node
         script:
@@ -66,6 +72,9 @@ definitions:
     - step: &docker-build-sha
         name: 'Docker — Build & Push :sha-{8chars}'
         image: atlassian/default-image:4
+        runs-on:
+          - self.hosted
+          - linux
         services:
           - docker
         script:
@@ -84,6 +93,9 @@ definitions:
     - step: &deploy-staging
         name: 'Deploy to Staging + Retag :staging'
         deployment: staging
+        runs-on:
+          - self.hosted
+          - linux
         services:
           - docker
         script:
@@ -121,6 +133,9 @@ definitions:
         name: 'Deploy to Production + Retag :latest'
         deployment: production
         trigger: manual
+        runs-on:
+          - self.hosted
+          - linux
         services:
           - docker
         script:
@@ -168,16 +183,8 @@ pipelines:
   # CI — Feature branches (build & test uniquement)
   # ============================================
   default:
-    - step:
-        <<: *build-test-backend
-        runs-on:
-          - self.hosted
-          - linux
-    - step:
-        <<: *build-frontend
-        runs-on:
-          - self.hosted
-          - linux
+    - step: *build-test-backend
+    - step: *build-frontend
 
   # ============================================
   # branches: main — Pipeline BODM complet
@@ -189,31 +196,11 @@ pipelines:
   # ============================================
   branches:
     main:
-      - step:
-          <<: *build-test-backend
-          runs-on:
-            - self.hosted
-            - linux
-      - step:
-          <<: *build-frontend
-          runs-on:
-            - self.hosted
-            - linux
-      - step:
-          <<: *docker-build-sha
-          runs-on:
-            - self.hosted
-            - linux
-      - step:
-          <<: *deploy-staging
-          runs-on:
-            - self.hosted
-            - linux
-      - step:
-          <<: *deploy-prod
-          runs-on:
-            - self.hosted
-            - linux
+      - step: *build-test-backend
+      - step: *build-frontend
+      - step: *docker-build-sha
+      - step: *deploy-staging
+      - step: *deploy-prod
 
   # ============================================
   # PR Check — Vérification des Pull Requests
