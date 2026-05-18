@@ -258,6 +258,49 @@ script:
 > AWS Graviton, Contabo ARM), GitHub offre un avantage concret en termes de rapidité
 > de build et de simplicité de configuration.
 
+#### Problème n°7 — DNS Docker bridge : hostname non résolu depuis le conteneur
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `ssh: Could not resolve hostname staging.dkpt.soguimod.com: Name does not resolve` |
+| **Cause** | Les conteneurs Docker en mode bridge utilisent le DNS interne de Docker (8.8.8.8), qui ne résout pas toujours les domaines configurés via des providers DNS externes avec TTL courts |
+| **Impact** | `ssh`, `scp` et `ssh-keyscan` échouent tous sur le hostname — le pipeline CD est bloqué |
+| **Solution** | Stocker l'IP directe dans `VPS_STAGING_HOST` / `VPS_HOST` au lieu du nom de domaine |
+
+```bash
+# ❌ Nom de domaine (échoue dans le conteneur Docker bridge)
+VPS_STAGING_HOST=staging.dkpt.soguimod.com
+
+# ✅ IP directe (pas de DNS requis)
+VPS_STAGING_HOST=141.253.105.181
+```
+
+> **Note** : L'option `extra_hosts` dans `config.toml` du runner (équivalent de `--add-host`)
+> est une alternative mais son application n'est pas garantie selon la version du runner
+> et la configuration réseau du VPS. L'IP directe est plus fiable et portable.
+
+> **Comparaison GitHub** : GitHub Actions utilise des runners hébergés avec un DNS
+> complet qui résout tous les domaines publics. Cette limitation est spécifique aux
+> runners Docker auto-hébergés avec réseau bridge isolé.
+
+#### Problème n°8 — Variables prod manquantes : `VPS_USER` et `VPS_HOST`
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `usage: ssh [-46AaCfGgKkMNnqsTtVvXxYy]...` — SSH affiche son aide au lieu de se connecter |
+| **Cause** | La destination SSH est vide (`ubuntu@`) car `VPS_USER` n'était pas configurée dans GitLab |
+| **Impact** | Toutes les commandes SSH/SCP du déploiement prod échouent avec exit code 255 |
+| **Solution** | Ajouter `VPS_USER` et `VPS_HOST` dans GitLab → Settings → CI/CD → Variables |
+
+Les deux jeux de variables sont nécessaires et distincts :
+
+| Variable | Environnement | Valeur |
+|----------|---------------|--------|
+| `VPS_STAGING_USER` | Staging | `ubuntu` |
+| `VPS_STAGING_HOST` | Staging | IP du VPS staging |
+| `VPS_USER` | Production | `ubuntu` |
+| `VPS_HOST` | Production | IP du VPS prod |
+
 ---
 
 ## Temps d'exécution observés
