@@ -182,6 +182,114 @@ Le pipeline Bitbucket s'est déclenché automatiquement après le mirroring. La 
 
 ---
 
+### Problèmes rencontrés et résolus
+
+#### Problème n°1 — Parser YAML : commande vide (`Missing or empty command string`)
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `There is an error in your bitbucket-pipelines.yml at [pipelines > branches > main > 2 > step > script > 8]. Missing or empty command string` |
+| **Cause** | Une commande `echo` contenant `: ` (deux-points + espace) sans guillemets YAML extérieurs. Le parser YAML interprète `: ` comme un séparateur clé-valeur, produisant un item de script vide |
+| **Impact** | Le pipeline est rejeté avant exécution, aucun step ne tourne |
+| **Solution** | Encapsuler toute commande contenant `: `, `\|`, `&`, `*` entre guillemets simples YAML |
+
+```yaml
+# ❌ Problématique : le parseur YAML voit "sha-$SHORT_SHA" comme valeur d'une clé
+- echo "✅ Images pushed: sha-$SHORT_SHA"
+
+# ✅ Correct : guillemets simples YAML protègent le contenu
+- 'echo "Images pushed: sha-$SHORT_SHA"'
+```
+
+> **Règle générale Bitbucket** : toute commande shell contenant des caractères YAML
+> significatifs (`:` `, `\|`, `&`, `*`, `#`, `!`) doit être encapsulée
+> en `'...'` ou `"..."` au niveau YAML, indépendamment des guillemets bash.
+
+#### Problème n°2 — `error in libcrypto` avec les variables SSH
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `Error loading key "(stdin)": error in libcrypto` |
+| **Cause** | Les clés SSH privées multi-lignes copiées depuis Windows contiennent des `\r\n` au lieu de `\n`. OpenSSH exige un format PEM strict avec uniquement des `\n`. Le passage par `tr -d '\r'` ne suffit pas si Bitbucket stocke les newlines comme des caractères littéraux `\n` |
+| **Impact** | `ssh-add` échoue, aucune connexion SSH possible depuis le pipeline |
+| **Solution** | Utiliser le **SSH Keys natif Bitbucket** (Repository Settings → Pipelines → SSH Keys) |
+
+#### Problème n°3 — `Host key verification failed` (Known hosts manquant)
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `Host key verification failed` + `ssh_askpass: exec(/usr/bin/ssh-askpass): No such file or directory` |
+| **Cause** | L'IP du VPS prod (`145.241.164.58`) n'était pas dans les Known hosts de Bitbucket SSH Keys |
+| **Impact** | SSH refuse la connexion au VPS prod, le step de déploiement échoue |
+| **Solution** | Bitbucket → SSH Keys → Known hosts → entrer l'IP → Fetch → Add host |
+
+#### Problème n°4 — `Permission denied (publickey)` sur le VPS prod
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `ubuntu@145.241.164.58: Permission denied (publickey)` |
+| **Cause** | La clé publique Bitbucket n'était pas dans `~/.ssh/authorized_keys` du VPS prod |
+| **Impact** | Connexion SSH impossible même avec le Known host configuré |
+| **Solution** | Copier la clé publique depuis Bitbucket SSH Keys et l'ajouter sur le VPS prod |
+
+```bash
+# Sur le VPS prod
+echo "ssh-rsa AAAA..." >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+> **Piège** : Le VPS staging s'appelle `dev` dans le prompt bash (`ubuntu@dev`).
+> Il est facile de confondre staging et prod et d'ajouter la clé sur le mauvais serveur.
+> Vérifier le hostname avant toute opération : `hostname` ou `curl ifconfig.me`.
+
+---
+
+## SSH Keys natif Bitbucket
+
+Bitbucket propose un mécanisme dédié pour les clés SSH dans **Repository Settings → Pipelines → SSH Keys**, distinct des variables de dépôt.
+
+### Fonctionnement
+
+| Élément | Détail |
+|---------|--------|
+| **Clé privée** | Collée directement dans l'UI — Bitbucket gère le format PEM |
+| **Clé publique** | Générée automatiquement par Bitbucket — à ajouter dans `~/.ssh/authorized_keys` de chaque VPS cible |
+| **Known hosts** | Configurés manuellement par IP ou hostname avec vérification automatique de l'empreinte |
+| **Chargement** | Automatique avant chaque step — aucune commande `ssh-agent` / `ssh-add` nécessaire |
+
+### Avantages vs variables SSH
+
+| Aspect | Variables (`$VPS_SSH_KEY`) | SSH Keys natif |
+|--------|:------------------------:|:--------------:|
+| Format PEM préservé | ⚠️ Dépend de l'encodage | ✅ Garanti |
+| CRLF Windows | ❌ Problématique | ✅ Géré automatiquement |
+| Commandes `ssh-agent` | ❌ Requises | ✅ Inutiles |
+| Known hosts | ❌ Manuel dans le script | ✅ Configurés en UI |
+| Sécurité | Variables masquées | Dédié SSH |
+
+### Comparaison inter-plateformes
+
+| Plateforme | Mécanisme SSH | Particularité |
+|------------|:-------------:|---------------|
+| **GitHub Actions** | Secrets chiffrés | `echo "$KEY" >> key && chmod 600 key` |
+| **GitLab CI** | Variable type `File` | GitLab écrit le fichier, `$VAR` = chemin |
+| **Bitbucket** | SSH Keys natif | Chargé automatiquement, zéro configuration dans le YAML |
+
+### Configuration adoptée dans DKPT
+
+Après échec des approches par variable, le projet utilise SSH Keys natif :
+
+```yaml
+# bitbucket-pipelines.yml — deploy-staging
+script:
+  # SSH chargé automatiquement via Bitbucket SSH Keys (Repository Settings)
+  - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "bash /opt/dkpt/scripts/deploy.sh"
+```
+
+Aucune ligne `ssh-agent`, `ssh-add`, `chmod`, ou gestion de clé. Bitbucket injecte la clé avant chaque step qui en a besoin.
+
+---
+
 ## Temps d'exécution observés
 
 | Step | Durée | Notes |
@@ -240,6 +348,44 @@ Un self-hosted runner Linux a été configuré pour contourner la limitation des
 > **Observation** : Le self-hosted runner est légèrement plus rapide (~3%) mais l'avantage principal est de **ne pas consommer le quota de 50 minutes/mois**. C'est une solution pragmatique pour un projet de test/mémoire.
 
 > **Comparaison avec Azure DevOps** : Azure DevOps utilise aussi un self-hosted agent (ARM64 sur le VPS de production). La différence est que l'agent Azure est permanent et tourne en tant que service, tandis que le runner Bitbucket tourne dans un container Docker local.
+
+#### Problème de syntaxe YAML : `<<:` merge + `runs-on`
+
+Lors de l'ajout du `runs-on` au pipeline `branches: main:`, la première tentative utilisait le merge YAML `<<:` :
+
+```yaml
+# ❌ Problématique : <<: merge avec runs-on cause des erreurs de parsing
+branches:
+  main:
+    - step:
+        <<: *build-test-backend
+        runs-on:
+          - self.hosted
+          - linux
+```
+
+Bitbucket rejette cette syntaxe avec `Missing or empty command string`. La solution correcte est d'inclure `runs-on` **directement dans l'anchor** :
+
+```yaml
+# ✅ Correct : runs-on déclaré dans l'anchor
+definitions:
+  steps:
+    - step: &build-test-backend
+        name: 'Backend — Build & Test'
+        runs-on:
+          - self.hosted
+          - linux
+        script:
+          - cd backend && dotnet build
+
+branches:
+  main:
+    - step: *build-test-backend   # runs-on hérité automatiquement
+```
+
+> **Conclusion** : Le YAML merge `<<:` est supporté en YAML standard mais son interaction
+> avec le parser Bitbucket est instable quand le bloc fusionné contient des listes (`script:`).
+> Préférer l'inclusion directe des propriétés dans l'anchor.
 
 ---
 
@@ -319,6 +465,46 @@ Ceci garantit que l'image déployée en production est **exactement la même** q
 > Ce modèle simplifie la configuration initiale mais sacrifie la flexibilité d'orchestration
 > avancée. C'est l'illustration concrète du compromis entre **simplicité de mise en place**
 > et **expressivité du pipeline**.
+
+---
+
+## Validation finale — Pipeline BODM complet
+
+### Résultat après configuration complète
+
+| Step | Statut | Runner | Notes |
+|------|:------:|--------:|-------|
+| Backend — Build & Test | ✅ | Self-hosted ARM64 | dotnet restore + build + test |
+| Frontend — Lint & Build | ✅ | Self-hosted ARM64 | npm ci + lint + build Nuxt |
+| Docker — Build & Push `:sha` | ✅ | Self-hosted ARM64 | Build natif, image pousse sur Docker Hub |
+| Deploy Staging (automatique) | ✅ | Self-hosted ARM64 | SSH natif, VPS staging `141.253.105.181` |
+| Deploy Prod (manuel ▶️) | ✅ | Self-hosted ARM64 | SSH natif, VPS prod `145.241.164.58` |
+
+### Flux de déploiement validé
+
+```
+GitHub push → mirror Bitbucket → [ci:bitbucket] détecté
+  ↓
+CI Backend + Frontend (tests + lint)           ✅  ARM64 natif
+  ↓
+Docker build :sha-{8chars} → Docker Hub       ✅  Build Once
+  ↓
+Deploy Staging (pull :sha, retag :staging)     ✅  Deploy Many (1/2)
+  ↓
+Deploy Prod (manuel, pull :sha, retag :latest) ✅  Deploy Many (2/2)
+```
+
+### Variables de déploiement requises
+
+| Variable | Environnement | Valeur |
+|----------|:-------------:|--------|
+| `VPS_STAGING_HOST` | Staging | IP directe (`141.253.105.181`) |
+| `VPS_STAGING_USER` | Staging | `ubuntu` |
+| `VPS_HOST` | Production | IP directe (`145.241.164.58`) |
+| `VPS_USER` | Production | `ubuntu` |
+
+> **Note** : Les variables `VPS_STAGING_SSH_KEY` et `VPS_SSH_KEY` ne sont plus utilisées
+> depuis l'adoption des SSH Keys natifs Bitbucket.
 
 ---
 
