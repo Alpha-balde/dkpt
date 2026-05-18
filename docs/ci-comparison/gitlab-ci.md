@@ -62,6 +62,7 @@ Le parent déclenche les enfants via `trigger: include:`. Chaque enfant est un p
 - **5 jobs parallèles max** (free tier) : Moitié moins que GitHub Actions
 - **Pull mirror réservé au plan Premium** : Le mirroring natif (GitHub → GitLab) n'est pas disponible sur le free tier. Seul le push mirror est disponible, mais il pousse FROM GitLab, ce qui est inutile quand GitLab est le miroir
 - **Alternative mirroring** : Nécessite un push via GitHub Actions (`mirror.yml`) ou un `git remote add` local
+- **Pas de runner ARM64 sur le free tier** : Les runners partagés GitLab SaaS sont exclusivement AMD64 (`saas-linux-small-amd64`). Pour des images ARM64, il faut soit un runner self-hosted ARM64, soit une cross-compilation QEMU avec `docker buildx` — avec une pénalité de performance de ~2-3x
 
 ## Spécificités techniques
 
@@ -191,6 +192,72 @@ Le workflow `mirror.yml` de GitHub Actions poussera automatiquement vers GitLab 
 
 > **Spécificité GitLab CI** : Le `--fix` modifie les fichiers dans le workspace du runner. Comme on ne commite pas ces changements, le lint suivant vérifie que seuls des warnings subsistent. C'est une technique utile pour les règles auto-fixables qui ne méritent pas un commit dédié.
 
+#### Problème n°5 — Clé SSH corrompue par les CRLF Windows
+
+| Aspect | Détail |
+|--------|--------|
+| **Erreur** | `Error loading key "(stdin)": error in libcrypto` dans le CD staging |
+| **Cause** | La clé SSH privée copiée depuis Windows contient des `\r\n` au lieu de `\n`. OpenSSH exige un format PEM strict avec uniquement des `\n` |
+| **Impact** | `ssh-add -` échoue — le job CD s'arrête immédiatement |
+| **Solution** | `echo "$KEY" \| tr -d '\r' > /tmp/ssh_key && ssh-add /tmp/ssh_key` |
+
+```yaml
+# ❌ Avant (cassé si clé copiée depuis Windows)
+- echo "$VPS_STAGING_SSH_KEY" | ssh-add -
+
+# ✅ Après (robuste — supprime les \r avant chargement)
+- echo "$VPS_STAGING_SSH_KEY" | tr -d '\r' > /tmp/ssh_key
+- chmod 600 /tmp/ssh_key
+- ssh-add /tmp/ssh_key
+- rm /tmp/ssh_key
+```
+
+> **Note** : Ce problème est spécifique au workflow GitHub → Windows → GitLab :
+> la clé est générée/éditée sur Windows, puis collée dans l'UI GitLab (navigateur),
+> qui peut introduire des `\r`. Une clé copiée directement depuis un terminal
+> Linux/macOS n'aurait pas ce problème.
+
+#### Problème n°6 — Runners GitLab SaaS AMD64 vs VPS ARM64
+
+| Aspect | Détail |
+|--------|--------|
+| **Observation** | Les runners partagés GitLab SaaS sont exclusivement AMD64 (`saas-linux-small-amd64`) |
+| **Problème** | `docker build` produit par défaut une image `linux/amd64` — incompatible avec les VPS ARM64 |
+| **Solution** | Cross-compilation via `docker buildx` + QEMU (`tonistiigi/binfmt`) |
+| **Coût** | ~2-3x plus lent qu'un build natif ARM64 |
+
+```yaml
+# Activation QEMU + buildx pour cross-compiler linux/arm64
+before_script:
+  - docker run --privileged --rm tonistiigi/binfmt --install arm64
+  - docker buildx create --use --name builder
+  - docker buildx inspect --bootstrap
+
+script:
+  - docker buildx build
+      --platform linux/arm64   # cible les VPS ARM64
+      --network host            # accès nuget.org/npm dans DinD
+      --push                    # push direct (buildx ne supporte pas load+push séparé)
+      -t $IMAGE:sha-${CI_COMMIT_SHORT_SHA}
+      ./backend
+```
+
+**Comparaison avec GitHub Actions :**
+
+| | GitHub Actions | GitLab CI |
+|--|:-:|:-:|
+| **Runner CI** | `ubuntu-24.04-arm` (ARM64 natif ✅) | `saas-linux-small-amd64` (AMD64 ⚠️) |
+| **Image produite sans config** | `linux/arm64` ✅ | `linux/amd64` ❌ |
+| **Méthode pour ARM64** | `docker build` direct | `docker buildx` + QEMU |
+| **Vitesse build ARM64** | Référence (natif) | ~2-3x plus lent |
+| **Runner ARM64 sur free tier** | ✅ Disponible | ❌ Non disponible |
+
+> **Observation pour le mémoire** : GitHub Actions propose des runners ARM64 natifs
+> sur le plan Free (`ubuntu-24.04-arm`). GitLab SaaS ne propose que des runners AMD64
+> sur le free tier. Pour des projets ciblant des architectures ARM64 (VPS OVH Ampere,
+> AWS Graviton, Contabo ARM), GitHub offre un avantage concret en termes de rapidité
+> de build et de simplicité de configuration.
+
 ---
 
 ## Temps d'exécution observés
@@ -230,6 +297,7 @@ Le workflow `mirror.yml` de GitHub Actions poussera automatiquement vers GitLab 
 | **Secrets masqués** | ✅ Tout format accepté | ⚠️ Pas d'espaces/sauts de ligne |
 | **Clés SSH masquées** | ✅ | ❌ (multi-lignes interdites) |
 | **Variables par env** | Secrets dans l'environnement | Scope sur la variable |
+| **Runner ARM64 (free)** | ✅ `ubuntu-24.04-arm` natif | ❌ AMD64 uniquement → QEMU requis |
 
 ---
 
