@@ -189,14 +189,14 @@ const participationRate = computed(() => {
 
 <template>  
   <div class="space-y-6">
-    <!-- Header with year selector -->
+    <!-- Header with year selector --> 
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">
           Tableau de bord 
         </h1> 
         <p class="text-sm text-gray-500 mt-1">
-          Vue d'ensemble des membres, cotisations et paiements. [ci:bitbucket]  
+          Vue d'ensemble des membres, cotisations et paiements. Testing BODM avec Bitbucket [ci:bitbucket]  
         </p>
       </div>
       <div class="w-32"> 
