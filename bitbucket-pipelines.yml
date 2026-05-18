@@ -86,7 +86,7 @@ definitions:
           - docker push $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
           - docker build -t $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA ./frontend
           - docker push $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA
-          - echo "✅ Images pushed: sha-$SHORT_SHA"
+          - 'echo "Images pushed: sha-$SHORT_SHA"'
 
     # ---- Step : Deploy Staging + Retag :staging ----
     # DEPLOY 1 — pull l'image :sha déjà sur Docker Hub, déploie, retag :staging
@@ -125,7 +125,7 @@ definitions:
           - docker pull $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA
           - docker tag $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-frontend:staging
           - docker push $DOCKERHUB_USERNAME/dkpt-frontend:staging
-          - echo "✅ Staging deployed — sha-$SHORT_SHA promoted to :staging"
+          - 'echo "Staging deployed: sha-$SHORT_SHA promoted to staging"'
 
     # ---- Step : Deploy Production + Retag :latest ----
     # DEPLOY 2 — même image :sha que staging, déploie en prod, retag :latest
@@ -165,7 +165,7 @@ definitions:
           - docker pull $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA
           - docker tag $DOCKERHUB_USERNAME/dkpt-frontend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-frontend:latest
           - docker push $DOCKERHUB_USERNAME/dkpt-frontend:latest
-          - echo "✅ Production deployed — sha-$SHORT_SHA promoted to :latest"
+          - 'echo "Production deployed: sha-$SHORT_SHA promoted to latest"'
 
   services:
     docker:
