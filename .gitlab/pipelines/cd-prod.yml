@@ -25,10 +25,10 @@ variables:
 deploy-production:
   stage: deploy
   tags:
-    - unbuntu_arm64
+    - unbuntu_arm64 
   image: alpine:latest
   environment:
-    name: production
+    name: Prod
     url: https://dkpt.soguimod.com
   when: manual
   before_script:

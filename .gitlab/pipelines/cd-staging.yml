@@ -27,7 +27,7 @@ deploy-staging:
     - unbuntu_arm64
   image: alpine:latest
   environment:
-    name: staging
+    name: Staging
     url: https://staging.dkpt.soguimod.com
   before_script:
     - apk add --no-cache openssh-client
