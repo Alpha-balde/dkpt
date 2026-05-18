@@ -69,10 +69,10 @@ docker-build-sha:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "🐳 Building images with tag sha-${CI_COMMIT_SHORT_SHA}"
-    # Backend
-    - docker build -t $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./backend
+    # Backend — --network host nécessaire pour dotnet restore dans DinD (accès nuget.org)
+    - docker build --network host -t $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./backend
     - docker push $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
-    # Frontend
-    - docker build -t $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./frontend
+    # Frontend — --network host nécessaire pour npm install dans DinD
+    - docker build --network host -t $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./frontend
     - docker push $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
     - echo "✅ Images pushed with tag sha-${CI_COMMIT_SHORT_SHA}"
