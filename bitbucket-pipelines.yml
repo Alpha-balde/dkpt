@@ -101,14 +101,7 @@ definitions:
         script:
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
-          # Setup SSH
-          - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          - eval $(ssh-agent -s)
-          - echo "$VPS_STAGING_SSH_KEY" | tr -d '\r' > /tmp/ssh_key
-          - chmod 600 /tmp/ssh_key
-          - ssh-add /tmp/ssh_key
-          - rm /tmp/ssh_key
-          - echo "StrictHostKeyChecking=no" >> ~/.ssh/config
+          # SSH chargé automatiquement via Bitbucket SSH Keys (Repository Settings)
           # Prepare VPS directory
           - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
           # Copy infrastructure files
@@ -144,14 +137,7 @@ definitions:
         script:
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
-          # Setup SSH
-          - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          - eval $(ssh-agent -s)
-          - echo "$VPS_SSH_KEY" | tr -d '\r' > /tmp/ssh_key
-          - chmod 600 /tmp/ssh_key
-          - ssh-add /tmp/ssh_key
-          - rm /tmp/ssh_key
-          - echo "StrictHostKeyChecking=no" >> ~/.ssh/config
+          # SSH chargé automatiquement via Bitbucket SSH Keys (Repository Settings)
           # Prepare VPS directory
           - ssh $VPS_USER@$VPS_HOST "sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
           # Copy infrastructure files
