@@ -24,6 +24,8 @@ variables:
 # ============================================
 deploy-production:
   stage: deploy
+  tags:
+    - unbuntu_arm64
   image: alpine:latest
   environment:
     name: production
@@ -58,6 +60,8 @@ deploy-production:
 # ============================================
 retag-latest:
   stage: retag
+  tags:
+    - unbuntu_arm64
   image: docker:27
   services:
     - docker:27-dind
