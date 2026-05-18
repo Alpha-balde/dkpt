@@ -189,11 +189,31 @@ pipelines:
   # ============================================
   branches:
     main:
-      - step: *build-test-backend     # 1. CI — Backend
-      - step: *build-frontend         # 2. CI — Frontend
-      - step: *docker-build-sha       # 3. BUILD ONCE → :sha-{8chars}
-      - step: *deploy-staging         # 4. DEPLOY 1 → staging + retag :staging
-      - step: *deploy-prod            # 5. DEPLOY 2 → production (manual) + retag :latest
+      - step:
+          <<: *build-test-backend
+          runs-on:
+            - self.hosted
+            - linux
+      - step:
+          <<: *build-frontend
+          runs-on:
+            - self.hosted
+            - linux
+      - step:
+          <<: *docker-build-sha
+          runs-on:
+            - self.hosted
+            - linux
+      - step:
+          <<: *deploy-staging
+          runs-on:
+            - self.hosted
+            - linux
+      - step:
+          <<: *deploy-prod
+          runs-on:
+            - self.hosted
+            - linux
 
   # ============================================
   # PR Check — Vérification des Pull Requests
