@@ -227,10 +227,87 @@ Le workflow `mirror.yml` de GitHub Actions poussera automatiquement vers GitLab 
 | Node.js | Via `setup-node` action | Via image Docker |
 | Debugging | `act` local | Terminal interactif (payant) |
 | Temps CI total | ~1m16s | ~1m42s |
+| **Secrets masqués** | ✅ Tout format accepté | ⚠️ Pas d'espaces/sauts de ligne |
+| **Clés SSH masquées** | ✅ | ❌ (multi-lignes interdites) |
+| **Variables par env** | Secrets dans l'environnement | Scope sur la variable |
+
+---
+
+## Observations de configuration — Variables CI/CD
+
+Ces observations ont été faites lors de la mise en place des secrets et variables
+GitLab CI/CD pour le projet DKPT. Elles constituent des points de comparaison
+concrets pour le mémoire.
+
+### Contrainte des variables masquées : pas d'espaces
+
+GitLab refuse de masquer une variable dont la valeur contient des **espaces**
+(ou tout caractère non URL-safe) :
+
+```
+Erreur : "Unable to create masked variable because:
+          The value cannot contain the following characters: whitespace characters."
+```
+
+Exemple rencontré avec `POSTGRES_PASSWORD = "Un Jolie Mot de Passe = 12*4+38"` —
+GitLab a refusé le masquage.
+
+**Règles des variables masquées GitLab :**
+
+| Contrainte | Détail |
+|------------|--------|
+| Espaces | ❌ Interdit |
+| Sauts de ligne | ❌ Interdit (bloque aussi les clés SSH) |
+| Minimum 8 caractères | ✅ Requis |
+| Caractères URL-safe uniquement | `A-Za-z0-9_-.~@:` |
+
+**Solution appliquée** : Remplacer les espaces par `_` dans les mots de passe.
+`Un_Jolie_Mot_de_Passe=12*4+38` ✅
+
+> **Comparaison GitHub** : GitHub Secrets n'impose aucune contrainte de format sur la valeur
+> (espaces, caractères spéciaux, sauts de ligne autorisés). La valeur est toujours
+> masquée dans les logs, sans restriction. C'est un avantage concret de GitHub pour
+> les mots de passe complexes ou les clés multi-lignes.
+
+### Clés SSH : non masquables dans GitLab
+
+Les clés privées SSH (format PEM, multi-lignes) **ne peuvent pas être masquées**
+dans GitLab car elles contiennent des sauts de ligne.
+
+**Workaround** : Marquer les clés SSH comme **"Protected"** (accessible uniquement
+sur les branches/tags protégés) sans les masquer. La protection de branche compense
+partiellement l'absence de masquage.
+
+> **Comparaison GitHub** : GitHub Secrets supporte nativement les clés SSH
+> multi-lignes comme secrets masqués, sans configuration supplémentaire.
+
+### Gestion des variables par environnement : approche inversée vs GitHub
+
+| Approche | GitHub Actions | GitLab CI |
+|----------|---------------|-----------|
+| Concept | Secrets **dans** l'environnement | Variable avec **scope** d'environnement |
+| Configuration | Environnement → onglet Secrets | Variable → champ "Environment scope" |
+| Lisibilité | Un silo clair par env | Variables dispersées, filtrées par scope |
+| Granularité | Par environnement | Par environnement + wildcard (`review/*`) |
+
+**Variables scopées dans DKPT :**
+
+| Variable | Scope `staging` | Scope `production` |
+|----------|----------------|-------------------|
+| `JWT_ISSUER` | `staging.dkpt.soguimod.com` | `dkpt.soguimod.com` |
+| `JWT_AUDIENCE` | `staging.dkpt.soguimod.com` | `dkpt.soguimod.com` |
+| `CORS_ORIGINS` | `https://staging.dkpt.soguimod.com` | `https://dkpt.soguimod.com` |
+| `SITE_ADDRESS` | `staging.dkpt.soguimod.com` | `dkpt.soguimod.com` |
+
+Variables partagées (scope `*`) : `DOCKERHUB_*`, `POSTGRES_*`, `JWT_SECRET_KEY`,
+`NUXT_PUBLIC_API_BASE`, `APPLICATIONINSIGHTS_CONNECTION_STRING`.
+
+> **Bilan** : Les deux approches sont fonctionnellement équivalentes. GitLab offre
+> plus de granularité (wildcard de scope). GitHub est conceptuellement plus lisible
+> (un environnement = un silo de secrets).
 
 ---
 
 ## Comparaison avec les autres plateformes
 
 → Voir [README.md](README.md) pour le tableau synthèse
-
