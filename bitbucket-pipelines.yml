@@ -71,13 +71,12 @@ definitions:
     # BUILD ONCE — image construite une seule fois, réutilisée pour staging + prod
     - step: &docker-build-sha
         name: 'Docker — Build & Push :sha-{8chars}'
-        image: docker:27
+        image: atlassian/default-image:4
         runs-on:
           - self.hosted
           - linux
-        variables:
-          DOCKER_HOST: unix:///var/run/docker.sock
-          DOCKER_TLS_CERTDIR: ''
+        services:
+          - docker
         script:
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — step ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
@@ -97,9 +96,8 @@ definitions:
         runs-on:
           - self.hosted
           - linux
-        variables:
-          DOCKER_HOST: unix:///var/run/docker.sock
-          DOCKER_TLS_CERTDIR: ''
+        services:
+          - docker
         script:
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
@@ -134,9 +132,8 @@ definitions:
         runs-on:
           - self.hosted
           - linux
-        variables:
-          DOCKER_HOST: unix:///var/run/docker.sock
-          DOCKER_TLS_CERTDIR: ''
+        services:
+          - docker
         script:
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
@@ -162,6 +159,9 @@ definitions:
           - docker push $DOCKERHUB_USERNAME/dkpt-frontend:latest
           - 'echo "Production deployed: sha-$SHORT_SHA promoted to latest"'
 
+  services:
+    docker:
+      memory: 3072
 
   caches:
     dotnetcore: backend/**/obj
