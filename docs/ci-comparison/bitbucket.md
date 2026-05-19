@@ -508,6 +508,101 @@ Deploy Prod (manuel, pull :sha, retag :latest) ✅  Deploy Many (2/2)
 
 ---
 
+---
+
 ## Comparaison avec les autres plateformes
 
 → Voir [README.md](README.md) pour le tableau synthèse
+
+---
+
+## Docker executor — Socket binding vs DinD
+
+### Contexte
+
+Le build Docker dans Bitbucket Pipelines nécessite un daemon Docker. La configuration standard
+utilise **Docker-in-Docker (DinD)** via `services: docker`, qui démarre un daemon Docker isolé
+dans un container dédié pour chaque step.
+
+### Tentative de migration vers le socket binding
+
+Après avoir migré GitLab CI vers le socket binding (plus rapide, cache local persistant),
+la même approche a été tentée sur Bitbucket :
+
+```yaml
+# Tentative (échouée) — socket binding
+- step: &docker-build-sha
+    image: docker:27
+    variables:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      DOCKER_TLS_CERTDIR: ''
+    # services: docker  ← supprimé
+```
+
+#### Résultat
+
+```
+docker login  → Login Succeeded  ✅  (ne nécessite pas le daemon)
+docker build  → Cannot connect to the Docker daemon at tcp://localhost:2375  ❌
+```
+
+#### Cause
+
+Le runner Bitbucket (`RUNTIME=linux-docker`) a bien le socket monté :
+
+```
+Volumes: ["/var/run/docker.sock:/var/run/docker.sock", ...]
+DOCKER_URI=unix:///var/run/docker.sock
+```
+
+Mais lorsqu'il démarre un **step container** (`docker run ... docker:27`), il ne transmet pas
+automatiquement le socket à ce container. Le step container se retrouve sans accès au daemon
+et tente de se connecter à `tcp://localhost:2375` (port DinD par défaut), qui n'existe pas.
+
+**Différence clé avec GitLab** :
+
+| Aspect | GitLab CI | Bitbucket |
+|--------|:---------:|:---------:|
+| Config socket propagation | `config.toml` → `volumes = [...]` | Non exposé nativement |
+| Socket dans job container | ✅ Automatique | ❌ Non transmis |
+| Solution disponible | `config.toml` | `EXTRA_DOCKER_ARGS` (non standard) |
+
+### Option disponible : `EXTRA_DOCKER_ARGS`
+
+Il existe un moyen de propager le socket via une variable d'environnement du runner :
+
+```bash
+# Relance du runner avec propagation du socket aux step containers
+docker run -d \
+  --name runner-bitbucket \
+  -e ACCOUNT_UUID='{286f30ad-3c48-41b6-bd3b-c1f2697d436f}' \
+  -e REPOSITORY_UUID='{388021d2-017c-4e2d-a0f3-3503ae3b05c3}' \
+  -e RUNNER_UUID='{26f61134-ef3d-5b2c-815f-446367da8f68}' \
+  -e OAUTH_CLIENT_ID='...' \
+  -e OAUTH_CLIENT_SECRET='...' \
+  -e EXTRA_DOCKER_ARGS='-v /var/run/docker.sock:/var/run/docker.sock' \
+  -v /tmp:/tmp \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+  docker-public.packages.atlassian.com/sox/atlassian/bitbucket-pipelines-runner
+```
+
+### Décision : conservation de DinD
+
+Cette option n'a pas été retenue pour les raisons suivantes :
+
+1. **Configuration non standard** : `EXTRA_DOCKER_ARGS` n'est pas documenté officiellement comme
+   mécanisme principal — c'est une workaround, pas une feature supportée.
+2. **Reconfiguration invasive** : Nécessite d'arrêter et relancer le runner avec un nouvel argument,
+   sans garantie de stabilité à long terme.
+3. **Métriques valides** : Les temps de build mesurés en DinD reflètent le comportement réel
+   de Bitbucket dans sa **configuration standard self-hosted**, ce qui est représentatif
+   et honnête pour la comparaison du mémoire.
+4. **Observation pertinente** : La limitation est structurelle et documentable — Bitbucket
+   est plus restrictif que GitLab sur ce point, ce qui constitue un élément de différenciation
+   concret entre les plateformes.
+
+> **Conclusion pour le mémoire** : Bitbucket conserve DinD. Contrairement à GitLab CI
+> (socket binding via `config.toml`) et Azure DevOps (Shell executor natif), Bitbucket
+> ne permet pas de bénéficier du cache Docker local sans reconfiguration manuelle avancée
+> du runner — une limitation structurelle de son modèle d'exécution `linux-docker`.
