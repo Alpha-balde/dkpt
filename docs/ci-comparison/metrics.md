@@ -47,7 +47,7 @@ Pour garantir la comparabilité des résultats :
 | Paramètre | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |-----------|:--------------:|:---------:|:---------:|:------------:|
 | **Commit de référence** | `d0bc196` | `1a05dd5` | `744611b` | — |
-| **Pipeline de référence** | — | #2536856712 | #41 | — |
+| **Pipeline de référence** | CI #78 / Staging #44 / Prod #50 | #2536856712 | #41 | — |
 | **Date de mesure** | 2026-05-19 | 2026-05-19 | 2026-05-19 | — |
 | **Runner CI** | `ubuntu-24.04-arm` (GitHub-hosted) | `unbuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `ubuntu-latest` + `Default` |
 | **Runner Docker build** | `ubuntu-24.04-arm` (GitHub-hosted) | `unbuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `Default` (self-hosted VPS) |
@@ -60,10 +60,13 @@ Pour garantir la comparabilité des résultats :
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **Backend** (dotnet restore + build + test) | — | **44s** | **35s** | — |
-| **Frontend** (npm ci + lint + build) | — | **1m55s** | **5s** *(cache chaud)* | — |
-| **CI total** (parallèle ou séquentiel) | ~1m16s | **~1m55s** *(parallèle)* | **~40s** *(cache)* | — |
+| **Backend** (dotnet restore + build + test) | — *(inclus dans CI #78)* | **44s** | **35s** | — |
+| **Frontend** (npm ci + lint + build) | — *(inclus dans CI #78)* | **1m55s** | **5s** *(cache chaud)* | — |
+| **CI total** (parallèle ou séquentiel) | — *(inclus dans CI #78)* | **~1m55s** *(parallèle)* | **~40s** *(cache)* | — |
 | **Mode exécution** | Parallèle | Parallèle | Séquentiel | Parallèle |
+
+> **Note GitHub** : Le détail CI (backend/frontend) nécessite un screenshot des jobs individuels.
+> Le total `ci.yml` #78 = **4m35s** inclut CI + Docker build (steps chaînés dans le même workflow).
 
 > **Note** : GitHub et GitLab exécutent backend et frontend en parallèle (2 jobs simultanés).
 > Bitbucket exécute les steps séquentiellement (contrainte de son modèle monolithique).
@@ -83,30 +86,39 @@ Pour garantir la comparabilité des résultats :
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **Préparation répertoire VPS** | — | inclus dans 16s | inclus dans 37s | — |
-| **Copie fichiers infra** (SCP/cp) | — | inclus dans 16s | inclus dans 37s | — |
-| **Génération .env** | — | inclus dans 16s | inclus dans 37s | — |
-| **docker compose pull + up** | — | inclus dans 16s | inclus dans 37s | — |
-| **Retag :staging** | — | **13s** | inclus dans 37s | — |
-| **CD Staging total** | — | **35s** (deploy 16s + retag 13s) | **37s** | — |
+| **Préparation répertoire VPS** | inclus dans 58s | inclus dans 16s | inclus dans 37s | — |
+| **Copie fichiers infra** (SCP/cp) | inclus dans 58s | inclus dans 16s | inclus dans 37s | — |
+| **Génération .env** | inclus dans 58s | inclus dans 16s | inclus dans 37s | — |
+| **docker compose pull + up** | inclus dans 58s | inclus dans 16s | inclus dans 37s | — |
+| **Retag :staging** | inclus dans 58s | **13s** | inclus dans 37s | — |
+| **CD Staging total** | **58s** | **35s** (deploy 16s + retag 13s) | **37s** | — |
 
 ### 2.4 CD Production (manuel)
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **CD Prod total** (hors attente manuelle) | — | **32s** (deploy 17s + retag 14s) | **37s** | — |
-| **Retag :latest** | — | **14s** | inclus dans 37s | — |
+| **CD Prod total** (hors attente manuelle) | **48s** *(steps actifs)* | **32s** (deploy 17s + retag 14s) | **37s** | — |
+| **CD Prod total** (overhead `workflow_run` inclus) | **3m39s** | N/A (déclenchement parallèle) | N/A | — |
+| **Retag :latest** | **15s** | **14s** | inclus dans 37s | — |
+| **Deploy** | **33s** | **17s** | inclus dans 37s | — |
+
+> **Note `workflow_run`** : Le CD Prod GitHub affiche 3m39s car il attend que le CD Staging
+> termine via `workflow_run`. Le temps actif des steps (deploy + retag) est **48s**.
 
 ### 2.5 Pipeline main — Total bout en bout
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
-| **CI total** | ~1m16s | **~1m55s** | ~40s *(cache)* | — |
-| **CI + Docker build** | — | **~4m46s** | ~3m19s | — |
-| **CI + Docker + CD Staging** | — | **~5m21s** | ~3m56s | — |
-| **Pipeline complet** (hors attente prod) | — | **5m46s** | **4m36s** | — |
+| **CI total** (inclus Docker build) | **4m35s** | **~1m55s** | ~40s *(cache)* | — |
+| **CI + Docker build** | inclus dans 4m35s | **~4m46s** | ~3m19s | — |
+| **CI + Docker + CD Staging** | **~5m33s** | **~5m21s** | ~3m56s | — |
+| **Pipeline complet** (steps actifs, hors attente) | **~5m21s** | **5m46s** | **4m36s** | — |
+| **Pipeline complet** (mur à mur, `workflow_run` inclus) | **~8m51s** | **5m46s** | **4m36s** | — |
 
 > **Gain socket binding vs DinD (GitLab)** : 7m07s *(DinD, run précédent)* → 5m46s *(socket binding)* = **−1m21s (~19%)** sur le même code source et même runner ARM64.
+
+> **Note GitHub workflow_run** : L'architecture GitHub (CI → CD Staging → CD Prod via `workflow_run`)
+> ajoute une latence entre chaque étape. Le temps mur à mur est plus élevé que le temps actif cumulatif.
 
 ### 2.6 PR Check
 
