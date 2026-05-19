@@ -2,7 +2,9 @@
 # DKPT — Pipeline CI (GitHub Actions)
 # ============================================
 # Architecture : Build Once, Deploy Many (BODM)
-# Jobs : build-and-test → docker-build-sha
+# Jobs : backend-build-test ──┐
+#        frontend-build       ├──→ docker-build-sha
+#        (parallèles)         ┘
 #
 # Le CI construit et pousse l'image Docker une seule fois
 # avec le tag :sha-{8chars}. Les pipelines CD (cd-staging, cd-prod)
@@ -44,10 +46,10 @@ env:
 
 jobs:
   # ============================================
-  # Job 1 — Build & Test
+  # Job 1a — Backend Build & Test (parallèle)
   # ============================================
-  build-and-test:
-    name: Build & Test
+  backend-build-test:
+    name: Backend — Build & Test
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]')
 
@@ -55,7 +57,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ---- Backend (.NET 9) ----
       - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v4
         with:
@@ -73,7 +74,18 @@ jobs:
         run: dotnet test --no-build --configuration Release --verbosity minimal
         working-directory: backend
 
-      # ---- Frontend (Nuxt 4) ----
+  # ============================================
+  # Job 1b — Frontend Build (parallèle)
+  # ============================================
+  frontend-build:
+    name: Frontend — Lint & Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
@@ -83,10 +95,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci
-        working-directory: frontend
-
-      - name: Lint frontend (auto-fix)
-        run: npm run lint -- --fix
         working-directory: frontend
 
       - name: Lint frontend
@@ -105,7 +113,7 @@ jobs:
   docker-build-sha:
     name: Docker Build & Push :sha
     runs-on: ubuntu-24.04-arm
-    needs: build-and-test
+    needs: [backend-build-test, frontend-build]
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci:github]'))
 
     steps:
