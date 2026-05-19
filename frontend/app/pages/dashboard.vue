@@ -196,7 +196,7 @@ const participationRate = computed(() => {
           Tableau de bord
         </h1>
         <p class="text-sm text-gray-500 mt-1">
-          Vue d'ensemble des membres, cotisations et paiements. Revert to DinD [ci:bitbucket]
+          Vue d'ensemble des membres, cotisations et paiements. Metric form github action [ci:github]
         </p>
       </div>
       <div class="w-32">
