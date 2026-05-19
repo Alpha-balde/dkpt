@@ -71,16 +71,17 @@ definitions:
     # BUILD ONCE — image construite une seule fois, réutilisée pour staging + prod
     - step: &docker-build-sha
         name: 'Docker — Build & Push :sha-{8chars}'
-        image: atlassian/default-image:4
+        image: docker:27
         runs-on:
           - self.hosted
           - linux
-        services:
-          - docker
+        variables:
+          DOCKER_HOST: unix:///var/run/docker.sock
+          DOCKER_TLS_CERTDIR: ''
         script:
-          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; }'
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — step ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
-          - echo "🐳 Building images with tag sha-$SHORT_SHA"
+          - echo "Building images with tag sha-$SHORT_SHA"
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
           - docker build -t $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA ./backend
           - docker push $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
@@ -96,10 +97,11 @@ definitions:
         runs-on:
           - self.hosted
           - linux
-        services:
-          - docker
+        variables:
+          DOCKER_HOST: unix:///var/run/docker.sock
+          DOCKER_TLS_CERTDIR: ''
         script:
-          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # SSH chargé automatiquement via Bitbucket SSH Keys (Repository Settings)
           # Prepare VPS directory
@@ -113,7 +115,7 @@ definitions:
           - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' POSTGRES_PASSWORD='$POSTGRES_PASSWORD' JWT_SECRET_KEY='$JWT_SECRET_KEY' JWT_ISSUER='$JWT_ISSUER' JWT_AUDIENCE='$JWT_AUDIENCE' CORS_ORIGINS='$CORS_ORIGINS' NUXT_PUBLIC_API_BASE='$NUXT_PUBLIC_API_BASE' SITE_ADDRESS='$SITE_ADDRESS' APPLICATIONINSIGHTS_CONNECTION_STRING='$APPLICATIONINSIGHTS_CONNECTION_STRING' IMAGE_TAG=sha-$SHORT_SHA bash /opt/dkpt/scripts/generate-env.sh"
           # Deploy
           - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "bash /opt/dkpt/scripts/deploy.sh"
-          # BODM — Retag :staging (promouvoir l'image sha vers staging)
+          # BODM — Retag :staging
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
           - docker pull $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
           - docker tag $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-backend:staging
@@ -132,10 +134,11 @@ definitions:
         runs-on:
           - self.hosted
           - linux
-        services:
-          - docker
+        variables:
+          DOCKER_HOST: unix:///var/run/docker.sock
+          DOCKER_TLS_CERTDIR: ''
         script:
-          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
+          - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # SSH chargé automatiquement via Bitbucket SSH Keys (Repository Settings)
           # Prepare VPS directory
@@ -149,7 +152,7 @@ definitions:
           - ssh $VPS_USER@$VPS_HOST "POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' POSTGRES_PASSWORD='$POSTGRES_PASSWORD' JWT_SECRET_KEY='$JWT_SECRET_KEY' JWT_ISSUER='$JWT_ISSUER' JWT_AUDIENCE='$JWT_AUDIENCE' CORS_ORIGINS='$CORS_ORIGINS' NUXT_PUBLIC_API_BASE='$NUXT_PUBLIC_API_BASE' SITE_ADDRESS='$SITE_ADDRESS' APPLICATIONINSIGHTS_CONNECTION_STRING='$APPLICATIONINSIGHTS_CONNECTION_STRING' IMAGE_TAG=sha-$SHORT_SHA bash /opt/dkpt/scripts/generate-env.sh"
           # Deploy
           - ssh $VPS_USER@$VPS_HOST "bash /opt/dkpt/scripts/deploy.sh"
-          # BODM — Retag :latest (promouvoir l'image sha vers latest)
+          # BODM — Retag :latest
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
           - docker pull $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA
           - docker tag $DOCKERHUB_USERNAME/dkpt-backend:sha-$SHORT_SHA $DOCKERHUB_USERNAME/dkpt-backend:latest
@@ -159,9 +162,6 @@ definitions:
           - docker push $DOCKERHUB_USERNAME/dkpt-frontend:latest
           - 'echo "Production deployed: sha-$SHORT_SHA promoted to latest"'
 
-  services:
-    docker:
-      memory: 3072
 
   caches:
     dotnetcore: backend/**/obj

@@ -196,7 +196,7 @@ const participationRate = computed(() => {
           Tableau de bord
         </h1>
         <p class="text-sm text-gray-500 mt-1">
-          Vue d'ensemble des membres, cotisations et paiements. Replace DinD for gitlab [ci:gitlab]
+          Vue d'ensemble des membres, cotisations et paiements. Replace DinD for bitbucket [ci:bitbucket]
         </p>
       </div>
       <div class="w-32">
