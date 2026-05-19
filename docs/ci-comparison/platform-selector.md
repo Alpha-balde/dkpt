@@ -37,6 +37,9 @@ reste silencieuse.
 | `[ci:bitbucket]` | Bitbucket Pipelines | ✅ | ✅ | ✅ |
 | *(aucun)* | Aucune | ❌ | ❌ | ❌ |
 
+> **Azure DevOps** : non inclus dans le sélecteur — se déclenche sur chaque push via GitHub App.
+> Voir section dédiée ci-dessous.
+
 ### Exemples d'utilisation
 
 ```bash
@@ -293,16 +296,77 @@ YAML (`[`, `]`, `{`, `}`). Bash reçoit le contenu tel quel et l'exécute.
 
 ---
 
+### Azure DevOps — Pas de sélecteur (déclenchement natif GitHub App)
+
+**Mécanisme** : Azure DevOps est connecté à GitHub via **GitHub App** (intégration
+native), non via un mirror. Il reçoit les events GitHub directement et déclenche
+ses pipelines sur chaque push vers `main`, sans intermédiaire.
+
+```yaml
+# .azuredevops/ci.yml
+trigger:
+  branches:
+    include: [main]  # Déclenché sur CHAQUE push — pas de filtre message
+```
+
+#### Pourquoi `[ci:azure]` ne fonctionne pas comme les autres
+
+Azure DevOps ne supporte pas le filtrage par message de commit dans le bloc
+`trigger:`. La variable `$(Build.SourceVersionMessage)` est disponible,
+mais uniquement au niveau des conditions de **jobs**, pas du déclencheur :
+
+```yaml
+# Ce qu'on pourrait faire — filtre partiel au niveau job
+jobs:
+- job: BuildTest
+  condition: contains(variables['Build.SourceVersionMessage'], '[ci:azure]')
+```
+
+**Limitation** : le pipeline se déclenche toujours (consomme une exécution),
+les jobs sont juste **skippés** si le marqueur est absent. Ce n'est pas un
+vrai filtre — contrairement aux 3 autres plateformes où les jobs ne sont
+jamais instanciés.
+
+| Comportement | GitHub / GitLab / Bitbucket | Azure DevOps |
+|---|:---:|:---:|
+| Pipeline instancié sans marqueur | ❌ Non | ✅ Oui (toujours) |
+| Jobs exécutés sans marqueur | ❌ Non | ❌ Non (skippés) |
+| Consomme des minutes sans marqueur | ❌ Non | ⚠️ Oui (overhead pipeline) |
+| Filtre au niveau `trigger:` | ✅ | ❌ Non supporté |
+
+#### Décision : pas de `[ci:azure]`
+
+L'ajout d'un filtre `[ci:azure]` au niveau job apporterait une complexité
+sans bénéfice réel : le pipeline se déclencherait quand même. La configuration
+actuelle — déclenchement systématique — est cohérente avec le modèle GitHub App.
+
+> **Observation pour le mémoire** : Azure DevOps, connecté via GitHub App,
+> déclenche systématiquement ses pipelines sur chaque push vers `main`,
+> sans mécanisme de filtrage par message de commit au niveau du trigger.
+> Les trois autres plateformes utilisent un sélecteur explicite
+> (`[ci:github]`, `[ci:gitlab]`, `[ci:bitbucket]`) permettant un contrôle
+> fin des exécutions — une différence architecturale directement liée
+> à leur mode de connexion (mirror vs GitHub App).
+
+**Évaluation** :
+- ✅ Simple — aucune configuration requise
+- ✅ Toujours synchronisé avec GitHub (GitHub App)
+- ❌ Pas de sélectivité — chaque push déclenche tous les pipelines Azure
+- ❌ Impossible de filtrer au niveau `trigger:` sur le message de commit
+
+---
+
 ## Comparaison des approches
 
-| Critère | GitHub Actions | GitLab CI | Bitbucket |
-|---------|:-:|:-:|:-:|
-| **Variable commit message native** | ✅ `head_commit.message` | ✅ `$CI_COMMIT_MESSAGE` | ❌ Absente |
-| **Condition déclarative YAML** | ✅ `if: contains(...)` | ✅ `rules: if: $VAR =~ /regex/` | ❌ |
-| **Point de contrôle unique** | ✅ (niveau job) | ✅ (orchestrateur parent) | ❌ (par step) |
-| **Regex native** | ❌ (fonction `contains`) | ✅ (opérateur `=~`) | ❌ |
-| **Maintenance** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ |
-| **Lisibilité config** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ |
+| Critère | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
+|---------|:-:|:-:|:-:|:-:|
+| **Variable commit message native** | ✅ `head_commit.message` | ✅ `$CI_COMMIT_MESSAGE` | ❌ Absente | ✅ `$(Build.SourceVersionMessage)` |
+| **Condition déclarative YAML** | ✅ `if: contains(...)` | ✅ `rules: if: $VAR =~ /regex/` | ❌ | ❌ (niveau job seulement) |
+| **Filtre au niveau trigger** | ✅ | ✅ | ✅ (guard bash) | ❌ Non supporté |
+| **Point de contrôle unique** | ✅ (niveau job) | ✅ (orchestrateur parent) | ❌ (par step) | N/A |
+| **Regex native** | ❌ (fonction `contains`) | ✅ (opérateur `=~`) | ❌ | ❌ |
+| **Maintenance** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | N/A (pas de sélecteur) |
+| **Connexion repo** | Native | Mirror | Mirror | GitHub App |
 
 ---
 
@@ -332,6 +396,7 @@ Push GitHub (mot-clé absent)
 | `.github/workflows/ci.yml` | `if: contains(...)` sur les jobs `build-and-test` et `docker-build-sha` |
 | `.gitlab-ci.yml` | `rules: if:` avec regex sur les 3 triggers (ci, cd-staging, cd-prod) |
 | `bitbucket-pipelines.yml` | Guard bash `git log -1` sur les 5 steps du pipeline `branches: main:` |
+| `.azuredevops/*.yml` | Aucune modification — déclenchement natif via GitHub App |
 
 > Commit d'implémentation : `0fcecc8`
 > Message : `feat(ci): add platform selector via commit message keyword`
