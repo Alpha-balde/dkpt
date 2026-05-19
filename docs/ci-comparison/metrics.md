@@ -60,52 +60,49 @@ Pour garantir la comparabilité des résultats :
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **Backend** (restore + build + test) | — *(inclus CI #78)* | **44s** | **35s** | **28s** *(Core CI)* |
-| **Frontend** (npm ci + lint + build) | — *(inclus CI #78)* | **1m55s** | **5s** *(cache)* | **1m7s** (install 25s + lint 4s + build 38s) |
-| **CI total** (parallèle ou séquentiel) | — *(inclus CI #78)* | **~1m55s** *(parallèle)* | **~40s** *(cache)* | **~1m7s** *(parallèle, Core CI)* |
+| **Backend** (restore + build + test) | **20s** (restore 6s + build 8s + test 6s) | **44s** | **35s** | **28s** *(Core CI)* |
+| **Frontend** (npm ci + lint + build) | **60s** (install 14s + lint 8s + build 38s) | **1m55s** | **5s** *(cache)* | **1m7s** (install 25s + lint 4s + build 38s) |
+| **CI total** (parallèle ou séquentiel) | **~1m24s** *(séquentiel dans 1 job)* | **~1m55s** *(parallèle)* | **~40s** *(cache)* | **~1m7s** *(parallèle, Core CI)* |
 | **Full CI total** (avec SonarCloud) | N/A | N/A | N/A | **2m21s** (+52s SonarCloud) |
-| **Mode exécution** | Parallèle | Parallèle | Séquentiel | Parallèle |
+| **Mode exécution** | Séquentiel *(1 job)* | Parallèle | Séquentiel | Parallèle |
 
-> **Note GitHub** : Le détail CI (backend/frontend) nécessite un screenshot des jobs individuels.
-> Le total `ci.yml` #78 = **4m35s** inclut CI + Docker build (steps chaînés dans le même workflow).
+> **Note GitHub** : GitHub exécute backend + frontend **séquentiellement** dans un seul job `build-and-test`
+> (contrairement à GitLab et Azure qui utilisent 2 jobs parallèles). Le lint frontend est exécuté
+> **deux fois** : `lint --fix` (auto-correction) puis `lint` (vérification stricte).
 
 > **Note Azure — Core CI vs Full CI** :
 > - **Core CI** = restore (2s) + build (17s) + test (9s) = **28s** — comparable aux autres plateformes
 > - **Full CI** = Core CI + SonarCloud (Prepare 5s + Analyze 46s + Publish 1s) + NuGet cache (7s) + divers = **2m21s**
 > - L’overhead SonarCloud (**~52s**) est exclu de la comparaison principale.
 
-> **Note** : GitHub et GitLab exécutent backend et frontend en parallèle (2 jobs simultanés).
-> Bitbucket exécute les steps séquentiellement (contrainte de son modèle monolithique).
-> Azure exécute en parallèle (2 jobs dans le stage BuildTest).
+> **Note** : GitLab et Azure exécutent backend et frontend en parallèle (2 jobs simultanés).
+> GitHub et Bitbucket exécutent les steps séquentiellement.
 
 ### 2.2 Docker Build (BUILD ONCE)
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
-| **Docker build backend** (run mesuré) | — | inclus dans 2m04s | inclus dans 2m39s | inclus dans 11s |
-| **Docker build frontend** (run mesuré) | — | inclus dans 2m04s | inclus dans 2m39s | inclus dans 11s |
-| **Docker push total** | — | inclus dans 2m04s | inclus dans 2m39s | inclus dans 11s |
-| **Docker Build total** | — | **2m04s** *(socket binding)* | **2m39s** *(DinD)* | **11s** *(ARM64, daemon local)* |
+| **Docker build backend** (run mesuré) | **59s** | inclus dans 2m04s | inclus dans 2m39s | inclus dans 11s |
+| **Docker build frontend** (run mesuré) | **1m19s** | inclus dans 2m04s | inclus dans 2m39s | inclus dans 11s |
+| **Setup Docker Buildx** | **18s** | N/A (socket binding) | N/A (DinD) | N/A |
+| **Docker Build total** | **3m7s** *(Buildx + backend 59s + frontend 1m19s)* | **2m04s** *(socket binding)* | **2m39s** *(DinD)* | **11s** *(ARM64, daemon local)* |
 | **Cache Docker disponible** | ✅ `type=gha` | ✅ socket binding | ❌ DinD | ✅ daemon local |
 
-> **Observation Azure Docker** : 11s pour builder et pusher les 2 images (backend + frontend) grâce
-> au daemon Docker local (shell executor sur runner ARM64 self-hosted `DKPT-ARM64`).
-> Les couches Docker sont cachées entre runs sur le même runner — performance maximale.
+> **Observation Docker** : GitHub utilise Docker Buildx avec cache `type=gha` (GitHub Actions Cache).
+> Le setup Buildx ajoute 18s d’overhead. Azure est le plus rapide (11s total) grâce au daemon
+> local sur runner self-hosted ARM64 avec cache persisté entre runs.
 
 ### 2.3 CD Staging
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **Préparation répertoire VPS** | inclus dans 58s | inclus dans 16s | inclus dans 37s | 3s *(Prepare & copy infra)* |
-| **Copie fichiers infra** (SCP/cp) | inclus dans 58s | inclus dans 16s | inclus dans 37s | inclus dans 3s |
-| **Génération .env** | inclus dans 58s | inclus dans 16s | inclus dans 37s | **2s** |
-| **docker compose pull + up** | inclus dans 58s | inclus dans 16s | inclus dans 37s | **28s** |
-| **Retag :staging** | inclus dans 58s | **13s** | inclus dans 37s | **15s** |
-| **CD Staging total** (job actif) | **58s** | **35s** (deploy 16s + retag 13s) | **37s** | **1m7s** |
+| **Préparation répertoire VPS** | **7s** *(prepare dir)* | inclus dans 16s | inclus dans 37s | 3s *(Prepare & copy infra)* |
+| **Copie fichiers infra** (SCP/cp) | **7s** *(scp-action)* | inclus dans 16s | inclus dans 37s | inclus dans 3s |
+| **Génération .env** | **1s** | inclus dans 16s | inclus dans 37s | **2s** |
+| **docker compose pull + up** | **10s** *(SSH deploy)* | inclus dans 16s | inclus dans 37s | **28s** |
+| **Retag :staging** | **22s** *(job séparé)* | **13s** | inclus dans 37s | **15s** |
+| **CD Staging total** (jobs actifs) | **50s** (deploy 28s + retag 22s) | **35s** (deploy 16s + retag 13s) | **37s** | **1m7s** |
 | **CD Staging total** (pipeline mur à mur) | **58s** | **35s** | **37s** | **1m30s** |
-
-> **Note Azure CD Staging** : le total 1m30s inclut la phase d’approbation d’environnement
-> (check Staging VPS) qui ajoute ~23s d’overhead par rapport au job actif (1m7s).
 
 ### 2.4 CD Production (manuel)
 
@@ -123,10 +120,10 @@ Pour garantir la comparabilité des résultats :
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
-| **CI total** (Core CI, comparable) | **4m35s** *(CI+Docker)* | **~1m55s** | ~40s *(cache)* | **~1m7s** |
+| **CI total** (Core CI, comparable) | **~1m24s** *(séquentiel)* | **~1m55s** *(parallèle)* | ~40s *(cache)* | **~1m7s** *(parallèle)* |
 | **CI total** (Full CI avec SonarCloud) | N/A | N/A | N/A | **2m21s** |
-| **CI + Docker build** | inclus dans 4m35s | **~4m46s** | ~3m19s | **~1m18s** *(Core CI + 11s Docker)* |
-| **CI + Docker + CD Staging** | **~5m33s** | **~5m21s** | ~3m56s | **~2m48s** *(Core)* / **~3m42s** *(Full)* |
+| **CI + Docker build** | **~4m31s** (1m24s + 3m7s) | **~4m46s** | ~3m19s | **~1m18s** *(Core CI + 11s Docker)* |
+| **CI + Docker + CD Staging** | **~5m21s** | **~5m21s** | ~3m56s | **~2m48s** *(Core)* / **~3m42s** *(Full)* |
 | **Pipeline complet** (steps actifs) | **~5m21s** | **5m46s** | **4m36s** | **~2m48s** *(Core CI)* |
 
 > **Gain socket binding vs DinD (GitLab)** : 7m07s *(DinD, run précédent)* → 5m46s *(socket binding)* = **−1m21s (~19%)** sur le même code source et même runner ARM64.
