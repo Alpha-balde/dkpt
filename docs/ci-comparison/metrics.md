@@ -258,24 +258,25 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
-| **Nombre de fichiers pipeline** | 5 core (+ 3 variantes) | 5 (orchestrateur + 4 enfants) | 1 | 4 (+ 5 templates) |
-| **Lignes YAML totales (core)** | **548** | **362** | **203** | **604** |
-| **Lignes YAML (avec variantes/templates)** | 791 | 362 | 203 | 604 |
-| **Templates / réutilisation** | Reusable workflows | Parent-child + `include:` | YAML anchors | Templates paramétrés |
+| **Nombre de fichiers pipeline** | 6 core (+ 3 variantes) | 5 (orchestrateur + 4 enfants) | 1 | 4 (+ 5 templates) |
+| **Lignes YAML totales (core)** | **590** | **362** | **203** | **604** |
+| **Lignes YAML (avec variantes/templates)** | 833 | 362 | 203 | 604 |
+| **Templates / réutilisation** | Reusable workflows (`workflow_call`) | Parent-child + `include:` | YAML anchors | Templates paramétrés |
 | **Enregistrement UI requis** | ❌ Auto | ❌ Auto | ❌ Auto | ✅ Manuel (par pipeline) |
 
 #### Détail par fichier
 
-| Fichier | Lignes | Plateforme |
-|---------|:------:|:-----------:|
-| `.github/workflows/ci.yml` | 149 | GitHub |
-| `.github/workflows/cd-staging.yml` | 133 | GitHub |
-| `.github/workflows/cd-prod.yml` | 134 | GitHub |
-| `.github/workflows/pr-check.yml` | 77 | GitHub |
-| `.github/workflows/mirror.yml` | 55 | GitHub |
-| `.github/workflows/variante-1-parallel.yml` | 74 | GitHub (variante) |
-| `.github/workflows/variante-2-single-job.yml` | 77 | GitHub (variante) |
-| `.github/workflows/variante-4-matrix.yml` | 92 | GitHub (variante) |
+| Fichier | Lignes | Rôle | Plateforme |
+|---------|:------:|------|:-----------:|
+| `.github/workflows/ci.yml` | **157** | CI — 2 jobs parallèles (backend + frontend) + Docker push | GitHub |
+| `.github/workflows/cd-staging.yml` | **119** | CD Staging — deploy SSH + appel reusable retag | GitHub |
+| `.github/workflows/cd-prod.yml` | **120** | CD Prod — deploy SSH + appel reusable retag | GitHub |
+| `.github/workflows/reusable-retag.yml` | **62** | Reusable workflow — retag :sha → :tag (QR3) | GitHub *(core)* |
+| `.github/workflows/pr-check.yml` | 77 | PR check | GitHub |
+| `.github/workflows/mirror.yml` | 55 | Synchronisation inter-plateformes | GitHub |
+| `.github/workflows/variante-1-parallel.yml` | 74 | *Variante archivée — remplacée par ci.yml* | GitHub (variante) |
+| `.github/workflows/variante-2-single-job.yml` | 77 | Variante 1 job séquentiel | GitHub (variante) |
+| `.github/workflows/variante-4-matrix.yml` | 92 | Variante matrix OS × version | GitHub (variante) |
 | `.gitlab-ci.yml` (orchestrateur) | 71 | GitLab |
 | `.gitlab/pipelines/ci.yml` | 86 | GitLab |
 | `.gitlab/pipelines/cd-staging.yml` | 77 | GitLab |
@@ -293,9 +294,9 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 | `.azuredevops/templates/quality-gate.yml` | 133 | Azure (template) |
 
 > **Observation** : Bitbucket a le moins de lignes (203) car tout est dans un seul fichier.
-> Azure a le plus (604) mais ses 5 templates sont réutilisés entre cd-staging et cd-prod,
-> réduisant la duplication. GitHub a 548 lignes core mais propose des variantes architecturales
-> supplémentaires non actives en production.
+> Azure a le plus (604) car ses 5 templates sont réutilisés entre cd-staging et cd-prod.
+> GitHub atteint 590 lignes core (6 fichiers) dont 62L pour le reusable workflow `reusable-retag.yml`
+> qui centralise la logique dupliquée entre cd-staging et cd-prod (−32L de duplication).
 
 ### 4.2 Variables et secrets
 
