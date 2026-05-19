@@ -1,12 +1,15 @@
 # ============================================
 # DKPT — Azure DevOps : Pipeline CD Staging
 # ============================================
-# Deploy sur VPS staging + Quality Gate
-# Déclenché après succès du pipeline CI sur main
+# Deploy sur VPS staging.
+# Déclenché après succès du pipeline CI sur main.
 #
 # Architecture (Build Once, Deploy Many) :
 #   Les images Docker sont buildées dans le pipeline CI.
 #   Ce pipeline ne fait que déployer et re-tagger.
+#
+# Quality Gate (k6, ZAP, Playwright) : pipeline séparé
+#   → quality-gate-manual.yml (déclenchement manuel)
 #
 # Équivalent de : .github/workflows/cd-staging.yml
 # ============================================
@@ -51,23 +54,3 @@ stages:
                 - template: templates/deploy-vps.yml
                   parameters:
                     envTag: 'staging'
-
-  # ============================================
-  # Stage 2 — Quality Gate (post-deploy)
-  # ============================================
-  - stage: QualityGate
-    displayName: 'Quality Gate'
-    dependsOn: DeployStaging
-    jobs:
-      - deployment: PostDeployTests
-        displayName: 'Post-Deploy Tests'
-        environment:
-          name: 'Staging'
-          resourceType: VirtualMachine
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: self
-
-                - template: templates/quality-gate.yml

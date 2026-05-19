@@ -1,0 +1,53 @@
+# ============================================
+# DKPT — Azure DevOps : Quality Gate (Manuel)
+# ============================================
+# Tests post-déploiement : performance, sécurité, E2E.
+# Pipeline séparé, déclenché MANUELLEMENT depuis l'UI Azure DevOps.
+#
+# Outils :
+#   - k6       : Load Testing (smoke test)
+#   - OWASP ZAP: Security Scanning (DAST baseline + API)
+#   - Playwright: E2E Functional Tests
+#
+# Prérequis : l'application doit être déployée sur staging.
+# Exécuté par l'agent d'environnement (directement sur le VPS staging).
+#
+# Note architecturale :
+#   Ce pipeline est volontairement séparé du CD Staging pour harmoniser
+#   Azure DevOps avec les 3 autres plateformes (GitHub, GitLab, Bitbucket)
+#   qui n'implémentent pas encore de quality gate automatisé.
+#   Le quality gate reste disponible comme démonstration des capacités
+#   avancées d'Azure DevOps (AZ-400).
+# ============================================
+
+trigger: none  # Déclenchement manuel uniquement
+
+resources:
+  pipelines:
+    - pipeline: cd-staging
+      source: 'DKPT CD — Staging'
+      trigger: none  # Ne pas déclencher automatiquement après le CD
+
+variables:
+  - group: dkpt-secrets
+  - group: dkpt-staging
+
+stages:
+  # ============================================
+  # Stage 1 — Quality Gate (post-deploy)
+  # ============================================
+  - stage: QualityGate
+    displayName: 'Quality Gate — Post-Deploy Tests'
+    jobs:
+      - deployment: PostDeployTests
+        displayName: 'Post-Deploy Tests (k6 + ZAP + Playwright)'
+        environment:
+          name: 'Staging'
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - template: templates/quality-gate.yml
