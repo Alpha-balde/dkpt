@@ -187,19 +187,19 @@ const participationRate = computed(() => {
 })
 </script>
 
-<template>  
+<template>
   <div class="space-y-6">
-    <!-- Header with year selector --> 
+    <!-- Header with year selector -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">
-          Tableau de bord 
-        </h1> 
+          Tableau de bord
+        </h1>
         <p class="text-sm text-gray-500 mt-1">
-          Vue d'ensemble des membres, cotisations et paiements. Testing BODM avec github [ci:github]  
+          Vue d'ensemble des membres, cotisations et paiements. Testing BODM avec github [ci:github]
         </p>
       </div>
-      <div class="w-32"> 
+      <div class="w-32">
         <USelect
           v-model="selectedYear"
           :items="yearItems"
@@ -209,7 +209,6 @@ const participationRate = computed(() => {
         />
       </div>
     </div>
- 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div
