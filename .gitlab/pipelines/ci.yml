@@ -70,18 +70,17 @@ docker-build-sha:
   tags:
     - unbuntu_arm64
   image: docker:27
-  services:
-    - docker:27-dind
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    DOCKER_TLS_CERTDIR: ""
   before_script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
-    - echo "🐳 Building linux/arm64 images (native) with tag sha-${CI_COMMIT_SHORT_SHA}"
+    - echo "Building linux/arm64 images (native) with tag sha-${CI_COMMIT_SHORT_SHA}"
     # Backend — build natif ARM64 (runner self-hosted VPS staging)
     - docker build --network host -t $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./backend
     - docker push $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
     # Frontend
     - docker build --network host -t $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./frontend
     - docker push $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
-    - echo "✅ Native ARM64 images pushed with tag sha-${CI_COMMIT_SHORT_SHA}"
+    - echo "Native ARM64 images pushed with tag sha-${CI_COMMIT_SHORT_SHA}"

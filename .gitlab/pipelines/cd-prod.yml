@@ -61,15 +61,14 @@ retag-latest:
   tags:
     - unbuntu_arm64
   image: docker:27
-  services:
-    - docker:27-dind
   variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    DOCKER_TLS_CERTDIR: ""
   needs: [deploy-production]
   before_script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
-    - echo "🏷️ Retagging sha-${CI_COMMIT_SHORT_SHA} → :latest"
+    - echo "Retagging sha-${CI_COMMIT_SHORT_SHA} to latest"
     # Backend
     - docker pull $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
     - docker tag $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} $DOCKER_BACKEND_IMAGE:latest
@@ -78,4 +77,4 @@ retag-latest:
     - docker pull $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
     - docker tag $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} $DOCKER_FRONTEND_IMAGE:latest
     - docker push $DOCKER_FRONTEND_IMAGE:latest
-    - echo "✅ sha-${CI_COMMIT_SHORT_SHA} promoted to :latest"
+    - echo "sha-${CI_COMMIT_SHORT_SHA} promoted to :latest"
