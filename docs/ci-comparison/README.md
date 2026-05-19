@@ -49,6 +49,65 @@
 
 ---
 
+## Cache Docker — Analyse comparative
+
+### Pourquoi le cache Docker est important
+
+Un build Docker sans cache repart de zéro à chaque run : téléchargement des layers de base, installation des dépendances, compilation. Avec le cache, seules les couches modifiées sont reconstruites. Sur un projet .NET + Nuxt, la différence peut être de **3-5 minutes par build**.
+
+### La distinction fondamentale : DinD vs Shell executor
+
+Le bénéfice du cache local dépend de **comment le runner exécute Docker**, pas de s'il est self-hosted.
+
+| Mode | Daemon Docker | Cache entre runs |
+|------|:-------------:|:----------------:|
+| **DinD** (Docker-in-Docker) | Nouveau daemon à chaque job | ❌ Détruit en fin de job |
+| **Shell executor** (host direct) | Daemon du VPS host, persistant | ✅ Automatique sur disque |
+
+### Comparaison par plateforme
+
+| Plateforme | Executor | Cache Docker | Mécanisme | Config requise |
+|------------|:--------:|:------------:|-----------|:--------------:|
+| **GitHub Actions** | Shared (GitHub) | ✅ | `type=gha` (cache GitHub Actions, ~10 Go) | `cache-from/to` dans `build-push-action` |
+| **Azure DevOps** | Shell (self-hosted sur VPS) | ✅ Auto | Layers locaux sur disque VPS — daemon host persistant | ❌ Aucune |
+| **GitLab CI** | Docker + **DinD** | ❌ | DinD crée un daemon éphémère par job | Nécessite `type=registry` |
+| **Bitbucket** | Docker + **DinD** | ❌ | DinD crée un daemon éphémère par job | Nécessite `type=registry` |
+
+> **Point contre-intuitif** : GitLab CI et Bitbucket utilisent des runners **self-hosted sur le même VPS**,
+> mais n'ont **pas** de cache Docker local. La raison : ils utilisent le **Docker executor avec DinD**,
+> qui lance un nouveau daemon Docker isolé à l'intérieur d'un container pour chaque job.
+> Ce daemon est détruit à la fin du job, emportant tous les layers avec lui.
+
+### Solution pour GitLab CI et Bitbucket : Registry cache
+
+Si on voulait activer le cache pour ces deux plateformes, il faudrait utiliser le **registry cache BuildKit** :
+
+```bash
+# Activer BuildKit
+export DOCKER_BUILDKIT=1
+
+# Build avec cache depuis/vers Docker Hub
+docker build \
+  --cache-from type=registry,ref=$IMAGE:cache \
+  --cache-to   type=registry,ref=$IMAGE:cache,mode=max \
+  -t $IMAGE:sha-$SHORT_SHA ./backend
+```
+
+Le cache est stocké sur **Docker Hub** sous un tag dédié (ex: `:cache`). C'est un contournement fonctionnel mais qui consomme de l'espace sur le registry.
+
+### Alternative : Shell executor sur GitLab
+
+GitLab CI permet de configurer un runner en **Shell executor** au lieu de Docker executor. Cela permettrait d'utiliser le daemon Docker du host directement (comme Azure DevOps) et bénéficier du cache local. Inconvénient : perte d'isolation entre les jobs.
+
+### Conclusion pour le mémoire
+
+> Azure DevOps est structurellement avantagé sur le cache Docker grâce à son modèle Shell executor.
+> C'est une conséquence directe de son architecture "agent sur le VPS" vs "container éphémère".
+> GitHub compense via son cache natif `type=gha`. GitLab et Bitbucket, malgré leurs runners
+> self-hosted, restent pénalisés par DinD — sauf à reconfigurer le runner en Shell executor.
+
+---
+
 ## Contraintes d'organisation par plateforme
 
 | Contrainte | GitHub Actions | GitLab CI | Azure DevOps | Bitbucket |
