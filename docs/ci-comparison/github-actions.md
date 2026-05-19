@@ -41,6 +41,62 @@
 - **Debugging limité** : Pas de terminal interactif sur les runners (sauf `act` en local)
 - **Pas de pipeline DAG visuel** : La visualisation est linéaire par workflow
 
+## Mécanisme de réutilisabilité — Reusable Workflows (QR3)
+
+GitHub Actions permet de définir des **workflows réutilisables** via le
+déclencheur `workflow_call`. Un workflow entier peut être appelé depuis
+un autre workflow, avec des `inputs` et `secrets` typés.
+
+### Implémentation dans DKPT
+
+La logique de **retag Docker** (pull :sha → tag → push) était dupliquée
+dans `cd-staging.yml` et `cd-prod.yml`. Elle est centralisée dans
+`reusable-retag.yml` :
+
+```yaml
+# .github/workflows/reusable-retag.yml
+on:
+  workflow_call:
+    inputs:
+      tag: { required: true, type: string }   # "staging" ou "latest"
+      sha: { required: true, type: string }   # short SHA (8 chars)
+    secrets:
+      DOCKERHUB_USERNAME: { required: true }
+      DOCKERHUB_TOKEN:    { required: true }
+```
+
+**Appel depuis cd-staging.yml :**
+```yaml
+retag:
+  needs: deploy
+  uses: ./.github/workflows/reusable-retag.yml
+  with:
+    tag: staging
+    sha: ${{ needs.deploy.outputs.short_sha }}
+  secrets:
+    DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
+```
+
+**Appel depuis cd-prod.yml :** identique avec `tag: latest`.
+
+### Comparaison avec les autres mécanismes de réutilisabilité
+
+| Plateforme | Mécanisme | Granularité | Inputs typés | Secrets forwarding |
+|-----------|-----------|:-----------:|:------------:|:-----------------:|
+| **GitHub Actions** | `workflow_call` | Workflow entier | ✅ (`string`, `boolean`, `number`) | ✅ `secrets:` |
+| **GitLab CI** | `include:` + `!reference` | Job / template | ✅ via `variables:` | ✅ CI/CD variables |
+| **Azure DevOps** | `template:` | Steps / jobs / stages | ✅ `parameters:` | ✅ variable groups |
+| **Bitbucket** | YAML anchors (`&` / `*`) | Step individuel | ❌ Pas de paramètres | ❌ |
+
+> **Observation pour le mémoire (QR3)** : Le mécanisme `workflow_call` de GitHub
+> est le plus puissant en termes de modularité au niveau workflow, mais il
+> est aussi le plus verbeux — le passage de secrets doit être explicite à chaque
+> appel (pas d'héritage automatique). GitLab et Azure offrent plus de flexibilité
+> via leurs systèmes de variables globales.
+
+---
+
 ## Spécificités techniques
 
 ### Chaînage de workflows (`workflow_run`)

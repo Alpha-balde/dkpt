@@ -35,6 +35,60 @@ pipelines:
 
 ---
 
+## Mécanisme de réutilisabilité — Ancres YAML (QR3)
+
+Bitbucket Pipelines utilise le mécanisme natif **YAML anchors** (`&` / `*`) pour
+factoriser les steps réutilisables dans la section `definitions:`.
+
+### Principe
+
+```yaml
+# Définition (déclaration avec &)
+definitions:
+  steps:
+    - step: &build-test-backend      # ← ancre déclarée ici
+        name: 'Backend — Build & Test'
+        script:
+          - dotnet restore
+          - dotnet build
+
+# Utilisation (référence avec *)
+pipelines:
+  branches:
+    main:
+      - step: *build-test-backend    # ← référence à l'ancre
+```
+
+### Ancres dans DKPT
+
+| Ancre | Step | Utilisé dans |
+|-------|------|:------------:|
+| `&build-test-backend` | Backend .NET restore + build + test | `branches: main:` + `default:` |
+| `&build-frontend` | Frontend npm ci + lint + build | `branches: main:` + `default:` |
+| `&docker-build-sha` | Docker build & push :sha | `branches: main:` |
+| `&deploy-staging` | Deploy VPS staging + retag :staging | `branches: main:` |
+| `&deploy-prod` | Deploy VPS prod + retag :latest | `branches: main:` (manuel) |
+
+### Comparaison avec les autres mécanismes de réutilisabilité
+
+| Plateforme | Mécanisme | Granularité | Partage inter-fichiers |
+|-----------|-----------|:-----------:|:----------------------:|
+| **GitHub Actions** | `workflow_call` (reusable workflows) | Workflow entier | ✅ Oui |
+| **GitLab CI** | `include:` + templates | Job / fichier complet | ✅ Oui |
+| **Azure DevOps** | `template:` YAML | Steps / jobs / stages | ✅ Oui |
+| **Bitbucket** | YAML anchors (`&` / `*`) | Step individuel | ❌ Même fichier uniquement |
+
+> **Limitation** : Les ancres YAML sont résolues par le parseur YAML **avant**
+> l'exécution — limitées au même fichier. Contrairement à GitLab (`include:`)
+> ou Azure (`template:`), Bitbucket ne peut pas référencer des steps externes.
+
+> **Observation pour le mémoire (QR3)** : Bitbucket propose le mécanisme de
+> réutilisabilité le moins puissant des quatre plateformes. Les ancres YAML
+> permettent de dédupliquer du code dans un fichier unique mais ne supportent
+> pas le partage inter-fichiers ni les paramètres dynamiques (inputs).
+
+---
+
 ## Points forts
 
 - **Simplicité** : Un seul fichier, tout est visible d'un coup

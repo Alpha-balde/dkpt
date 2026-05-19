@@ -1,0 +1,62 @@
+# ============================================
+# DKPT — Reusable Workflow : Retag Docker Image
+# ============================================
+# Workflow réutilisable (workflow_call) pour promouvoir
+# une image Docker :sha vers un tag sémantique.
+#
+# Usage (QR3 — Réutilisabilité GitHub Actions) :
+#   Ce workflow illustre le mécanisme de réutilisabilité
+#   de GitHub Actions via workflow_call, équivalent aux :
+#     - templates YAML d'Azure DevOps
+#     - include: de GitLab CI
+#     - ancres YAML (&anchor / *alias) de Bitbucket
+#
+# Appelé par :
+#   - cd-staging.yml  → tag: staging
+#   - cd-prod.yml     → tag: latest
+# ============================================
+
+name: Reusable — Retag Docker Image
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+        description: "Tag cible (ex: staging, latest)"
+      sha:
+        required: true
+        type: string
+        description: "Short SHA du commit (8 chars)"
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+jobs:
+  retag:
+    name: Retag :sha → :${{ inputs.tag }}
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Retag Backend :sha → :${{ inputs.tag }}
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-backend:sha-${{ inputs.sha }}
+          docker tag  ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-backend:sha-${{ inputs.sha }} \
+                      ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-backend:${{ inputs.tag }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-backend:${{ inputs.tag }}
+
+      - name: Retag Frontend :sha → :${{ inputs.tag }}
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-frontend:sha-${{ inputs.sha }}
+          docker tag  ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-frontend:sha-${{ inputs.sha }} \
+                      ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-frontend:${{ inputs.tag }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-frontend:${{ inputs.tag }}

@@ -39,6 +39,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
     environment: Dev
+    outputs:
+      short_sha: ${{ steps.sha.outputs.short }}
 
     steps:
       - name: Checkout code
@@ -100,34 +102,18 @@ jobs:
           script: bash /opt/dkpt/scripts/deploy.sh
 
   # ============================================
-  # Job 2 — Retag :staging (BODM — promote sha image)
+  # Job 2 — Retag :staging (via reusable workflow)
   # ============================================
+  # Réutilisabilité GitHub Actions (QR3) :
+  # La logique de retag est centralisée dans reusable-retag.yml
+  # et appelée ici via workflow_call.
   retag:
     name: Retag :staging
-    runs-on: ubuntu-24.04-arm
     needs: deploy
-
-    steps:
-      - name: Compute short SHA
-        id: sha
-        run: |
-          FULL_SHA="${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}"
-          echo "short=$(echo $FULL_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Retag Backend :sha → :staging
-        run: |
-          docker pull ${{ env.DOCKER_BACKEND_IMAGE }}:sha-${{ steps.sha.outputs.short }}
-          docker tag ${{ env.DOCKER_BACKEND_IMAGE }}:sha-${{ steps.sha.outputs.short }} ${{ env.DOCKER_BACKEND_IMAGE }}:staging
-          docker push ${{ env.DOCKER_BACKEND_IMAGE }}:staging
-
-      - name: Retag Frontend :sha → :staging
-        run: |
-          docker pull ${{ env.DOCKER_FRONTEND_IMAGE }}:sha-${{ steps.sha.outputs.short }}
-          docker tag ${{ env.DOCKER_FRONTEND_IMAGE }}:sha-${{ steps.sha.outputs.short }} ${{ env.DOCKER_FRONTEND_IMAGE }}:staging
-          docker push ${{ env.DOCKER_FRONTEND_IMAGE }}:staging
+    uses: ./.github/workflows/reusable-retag.yml
+    with:
+      tag: staging
+      sha: ${{ needs.deploy.outputs.short_sha }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
