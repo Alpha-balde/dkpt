@@ -142,24 +142,113 @@ Pour garantir la comparabilité des résultats :
 
 ## 3. Métriques de coût
 
-### 3.1 Quota et tarification
+> **Méthodologie** : GitHub et Azure facturent les runners **hosted** à la minute
+> (arrondi au-dessus). GitLab, Bitbucket et Azure utilisent des runners **self-hosted**
+> pour les jobs lourds (Docker, tests) — consommation quota = 0 min pour ces jobs.
+> Les runners self-hosted du projet DKPT sont mutualisés sur un VPS ARM64 partagé.
+
+### 3.1 Tarification des plateformes
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
 | **Minutes gratuites / mois** | 2 000 | 400 | 50 | 1 800 |
 | **Jobs parallèles (gratuit)** | 20 | 5 | 5 | 10 |
-| **Coût marginal ($/min)** | $0.008 | $0.017 | $0.015 | $0.008 |
+| **Coût marginal Linux ($/min)** | $0.008 | $0.017 | $0.015 | $0.008 |
+| **Coût marginal ARM64 ($/min)** | $0.008 | N/A | N/A | N/A |
 | **Durée artefacts** | 90 jours | 30 jours | 14 jours | 30 jours |
-| **Consommation par run main** | ~1m16s | ~2m35s | ~3m07s | — |
-| **% quota mensuel / run** | ~0.06% | ~0.65% | ~6.2% | — |
 
-### 3.2 Impact self-hosted runner
+### 3.2 Consommation réelle par run (pipeline complet main)
+
+> Les durées mesurées sont arrondies à la minute supérieure (unité de facturation).
+
+| Job | Runner | GitHub | GitLab | Bitbucket | Azure |
+|-----|--------|:------:|:------:|:---------:|:-----:|
+| **CI Backend** | Hosted | 1 min | 0 *(self-hosted)* | 0 *(self-hosted)* | 1 min |
+| **CI Frontend** | Hosted | 1 min | 0 *(self-hosted)* | 0 *(self-hosted)* | 0 *(self-hosted)* |
+| **Docker Build** | ARM64 hosted / self-hosted | 3 min | 0 *(self-hosted)* | 0 *(self-hosted)* | 0 *(self-hosted)* |
+| **CD Staging Deploy** | Hosted | 1 min | 0 *(self-hosted)* | 0 *(self-hosted)* | 1 min |
+| **CD Staging Retag** | ARM64 hosted / self-hosted | 1 min | 0 *(self-hosted)* | 0 *(self-hosted)* | 0 *(self-hosted)* |
+| **CD Prod Deploy** | Hosted | 1 min | 0 *(self-hosted)* | 0 *(self-hosted)* | 1 min |
+| **CD Prod Retag** | ARM64 hosted / self-hosted | 1 min | 0 *(self-hosted)* | 0 *(self-hosted)* | 0 *(self-hosted)* |
+| **Total facturé / run** | | **~9 min** | **0 min** | **0 min** | **~3 min** |
+| **% quota mensuel / run** | | ~0.45% | 0% | 0% | ~0.17% |
+
+> **Note GitHub** : Les 2 jobs CI parallèles (backend 29s + frontend 54s) consomment
+> 2 minutes de runner (1 par job). Les jobs Docker et Retag sur `ubuntu-24.04-arm`
+> sont facturés comme des runners Linux ARM64 (même tarif $0.008/min).
+
+> **Note Azure** : Les jobs CI (backend + frontend) tournent sur des runners hosted
+> (`ubuntu-latest`). Les jobs Docker Build et CD Retag tournent sur `DKPT-ARM64`
+> (self-hosted) → **0 quota consommé** pour ces jobs.
+
+### 3.3 Projections mensuelles
+
+#### Scénario A — 20 pushes/mois (1 par jour ouvré, équipe solo)
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
-| **Minutes consommées (self-hosted)** | N/A | 0 (illimité) | 0 (illimité) | 0 (illimité) |
-| **Raison d'adoption self-hosted** | ARM64 natif | ARM64 natif + quota | 50 min/mois trop limité | ARM64 natif |
-| **Impact sur quota** | Partiellement (Docker runner) | Nul | Nul | Nul |
+| **Minutes hosted consommées** | ~180 min | 0 min | 0 min | ~60 min |
+| **Quota mensuel disponible** | 2 000 min | 400 min | 50 min | 1 800 min |
+| **Quota restant** | 1 820 min | 400 min | 50 min | 1 740 min |
+| **Dépassement** | ❌ Non | ❌ Non | ❌ Non | ❌ Non |
+| **Coût mensuel** | **$0** | **$0** | **$0** | **$0** |
+
+#### Scénario B — 100 pushes/mois (équipe de 5, active)
+
+| Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
+|----------|:--------------:|:---------:|:---------:|:------------:|
+| **Minutes hosted consommées** | ~900 min | 0 min | 0 min | ~300 min |
+| **Quota mensuel disponible** | 2 000 min | 400 min | 50 min | 1 800 min |
+| **Dépassement** | ❌ Non | ❌ Non | ❌ Non | ❌ Non |
+| **Coût mensuel** | **$0** | **$0** | **$0** | **$0** |
+
+#### Scénario C — 100 pushes/mois SANS runners self-hosted
+
+> Simulation : que se passerait-il si GitLab et Bitbucket utilisaient
+> uniquement des runners **hosted** (sans VPS self-hosted) ?
+
+| Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
+|----------|:--------------:|:---------:|:---------:|:------------:|
+| **Minutes hosted / run** | ~9 min | ~9 min | ~9 min | ~9 min |
+| **Minutes totales (100 runs)** | 900 min | 900 min | 900 min | 900 min |
+| **Quota gratuit** | 2 000 min | 400 min | 50 min | 1 800 min |
+| **Dépassement** | 0 min | **500 min** | **850 min** | 0 min |
+| **Coût dépassement** | **$0** | **~$8.50** | **~$12.75** | **$0** |
+
+> **Observation** : Sans self-hosted, Bitbucket serait la plateforme la plus coûteuse
+> à usage modéré (quota 50 min/mois épuisé dès le 6ème push mensuel).
+> GitLab dépasserait son quota dès le 45ème push. GitHub et Azure resteraient
+> dans le quota gratuit même à 100 pushes/mois.
+
+### 3.4 Impact self-hosted — Analyse
+
+| Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
+|----------|:--------------:|:---------:|:---------:|:------------:|
+| **Jobs sur self-hosted** | Docker Build + Retag | Tous (CI + Docker + CD) | Tous (CI + Docker + CD) | Docker Build + CD Deploy + Retag |
+| **Minutes économisées / run** | ~4 min | ~9 min | ~9 min | ~6 min |
+| **Économie (100 runs/mois)** | 400 min → $3.20 | 900 min → $15.30 | 900 min → $13.50 | 600 min → $4.80 |
+| **Stratégie** | ARM64 uniquement | Quota + ARM64 | Quota très limité | ARM64 + quota préservé |
+
+### 3.5 Coût Total de Possession — TCO simplifié
+
+Le VPS ARM64 (runner self-hosted) est **mutualisé** entre les 4 plateformes.
+Son coût est amorti sur l'ensemble des projets hébergés.
+
+| Composante | Coût mensuel | Notes |
+|-----------|:------------:|-------|
+| **VPS staging** (ARM64, 4 vCPU, 8 GB) | ~$12/mois | Hébergement application DKPT |
+| **VPS production** (ARM64, 4 vCPU, 8 GB) | ~$12/mois | Production + runner CI/CD |
+| **CI/CD plateforme (hosted runners)** | $0/mois | Dans les quotas gratuits |
+| **Docker Hub** | $0/mois | Plan gratuit (images publiques) |
+| **SonarCloud** | $0/mois | Plan gratuit (repo public) |
+| **Total infrastructure** | **~$24/mois** | Identique pour les 4 plateformes |
+
+> **Conclusion coût** : Pour un projet solo ou une petite équipe (<5 devs, <100 pushes/mois),
+> les 4 plateformes sont gratuites en termes de CI/CD grâce aux quotas hosted et
+> aux runners self-hosted. La différence de coût entre plateformes n'apparaît
+> qu'à grande échelle (>200 pushes/mois sans self-hosted).
+> Le vrai différenciateur n'est donc pas le coût mais la **générosité du quota**
+> (GitHub > Azure >> GitLab > Bitbucket) et la **flexibilité du self-hosted**.
 
 ---
 
