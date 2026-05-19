@@ -39,6 +39,23 @@ Pour garantir la comparabilité des résultats :
 > Les durées sont mesurées depuis les logs Bitbucket/GitLab/GitHub/Azure.
 > Les valeurs marquées `—` n'ont pas encore été collectées.
 
+### Configuration de référence au moment des mesures
+
+> ⚠️ Les métriques ne sont comparables qu'en connaissant la configuration exacte au moment de la mesure.
+> Toute modification de config (runner, executor, cache) doit être documentée ici.
+
+| Paramètre | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
+|-----------|:--------------:|:---------:|:---------:|:------------:|
+| **Commit de référence** | `d0bc196` | `1a05dd5` | `744611b` | — |
+| **Pipeline de référence** | — | #2536856712 | #41 | — |
+| **Date de mesure** | 2026-05-19 | 2026-05-19 | 2026-05-19 | — |
+| **Runner CI** | `ubuntu-24.04-arm` (GitHub-hosted) | `unbuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `ubuntu-latest` + `Default` |
+| **Runner Docker build** | `ubuntu-24.04-arm` (GitHub-hosted) | `unbuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `Default` (self-hosted VPS) |
+| **Executor Docker** | buildx + `build-push-action` | **Socket binding** (`/var/run/docker.sock`) | **DinD** (`services: docker`) | Shell executor (daemon local) |
+| **Cache Docker** | `type=gha` (cache GitHub Actions) | Daemon local (socket binding) | ❌ Aucun (DinD éphémère) | Daemon local (shell executor) |
+| **Lint frontend** | `--fix` + `lint` (double passe) | `lint` strict | `lint` strict | `lint` strict |
+| **SSH deploy** | `appleboy/ssh-action` (action) | `ssh`/`scp` manuels | SSH Keys natif Bitbucket | Agent local sur VPS (pas de SSH) |
+
 ### 2.1 CI — Build & Test
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
