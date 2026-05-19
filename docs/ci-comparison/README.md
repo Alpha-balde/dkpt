@@ -167,9 +167,10 @@ GitLab CI permet de configurer un runner en **Shell executor** au lieu de Docker
 ## Détails par plateforme
 
 - [GitHub Actions](github-actions.md) — Analyse détaillée + variantes
-- [GitLab CI](gitlab-ci.md) — Pattern parent-child, services DinD
+- [GitLab CI](gitlab-ci.md) — Pattern parent-child, socket binding Docker
 - [Azure DevOps](azure-devops.md) — **Plateforme la plus complète** : templates paramétrés, Build Once Deploy Many, Quality Gate (k6 + ZAP + Playwright), SonarCloud, GitHub App
-- [Bitbucket](bitbucket.md) — Fichier unique, YAML anchors, limitations
+- [Bitbucket](bitbucket.md) — Fichier unique, YAML anchors, limitations (DinD, socket binding, EXTRA_DOCKER_ARGS)
+- [**Métriques comparatives**](metrics.md) — Cadre de mesure, valeurs collectées, scoring des 4 plateformes
 - [Quality Gates](quality-gates-integration.md) — Journal d'implémentation détaillé (5 phases, 10 problèmes)
 - [Sélecteur de plateforme](platform-selector.md) — Stratégie de déclenchement ciblé par mot-clé commit (`[ci:github]`, `[ci:gitlab]`, `[ci:bitbucket]`)
 - [Environnements de déploiement](environments.md) — Staging/Production sur les 3 plateformes : approbation manuelle, reviewers, comparaison des plans
