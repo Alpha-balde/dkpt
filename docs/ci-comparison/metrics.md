@@ -43,9 +43,9 @@ Pour garantir la comparabilité des résultats :
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **Backend** (dotnet restore + build + test) | — | 53s | **29s** | — |
-| **Frontend** (npm ci + lint + build) | — | 1m42s | **1m38s** | — |
-| **CI total** (parallèle ou séquentiel) | ~1m16s | ~2m35s | ~3m07s | — |
+| **Backend** (dotnet restore + build + test) | — | 53s | **35s** | — |
+| **Frontend** (npm ci + lint + build) | — | 1m42s | **5s** *(cache chaud)* | — |
+| **CI total** (parallèle ou séquentiel) | ~1m16s | ~2m35s | **~40s** *(cache)* | — |
 | **Mode exécution** | Parallèle | Parallèle | Séquentiel | Parallèle |
 
 > **Note** : GitHub et GitLab exécutent backend et frontend en parallèle (2 jobs simultanés).
@@ -56,39 +56,38 @@ Pour garantir la comparabilité des résultats :
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
-| **Docker build backend** (1er run — cache froid) | — | — | — | — |
-| **Docker build frontend** (1er run — cache froid) | — | — | — | — |
-| **Docker build backend** (run suivant — cache chaud) | — | — | — | — |
-| **Docker build frontend** (run suivant — cache chaud) | — | — | — | — |
-| **Docker push total** | — | — | — | — |
+| **Docker build backend** (run mesuré) | — | — | inclus dans 2m39s | — |
+| **Docker build frontend** (run mesuré) | — | — | inclus dans 2m39s | — |
+| **Docker push total** | — | — | inclus dans 2m39s | — |
+| **Docker Build total** | — | — | **2m39s** | — |
 | **Cache Docker disponible** | ✅ `type=gha` | ✅ socket binding | ❌ DinD | ✅ daemon local |
 
 ### 2.3 CD Staging
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **Préparation répertoire VPS** | — | — | — | — |
-| **Copie fichiers infra** (SCP/cp) | — | — | — | — |
-| **Génération .env** | — | — | — | — |
-| **docker compose pull + up** | — | — | — | — |
-| **Retag :staging** | — | — | — | — |
-| **CD Staging total** | — | — | — | — |
+| **Préparation répertoire VPS** | — | — | inclus dans 37s | — |
+| **Copie fichiers infra** (SCP/cp) | — | — | inclus dans 37s | — |
+| **Génération .env** | — | — | inclus dans 37s | — |
+| **docker compose pull + up** | — | — | inclus dans 37s | — |
+| **Retag :staging** | — | — | inclus dans 37s | — |
+| **CD Staging total** | — | — | **37s** | — |
 
 ### 2.4 CD Production (manuel)
 
 | Step | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |------|:--------------:|:---------:|:---------:|:------------:|
-| **CD Prod total** (hors attente manuelle) | — | — | — | — |
-| **Retag :latest** | — | — | — | — |
+| **CD Prod total** (hors attente manuelle) | — | — | **37s** | — |
+| **Retag :latest** | — | — | inclus dans 37s | — |
 
 ### 2.5 Pipeline main — Total bout en bout
 
 | Métrique | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |----------|:--------------:|:---------:|:---------:|:------------:|
-| **CI total** | ~1m16s | ~2m35s | ~3m07s | — |
-| **CI + Docker build** | — | — | — | — |
-| **CI + Docker + CD Staging** | — | — | — | — |
-| **Pipeline complet** (hors attente prod) | — | — | — | — |
+| **CI total** | ~1m16s | ~2m35s | ~40s *(cache)* | — |
+| **CI + Docker build** | — | — | ~3m19s | — |
+| **CI + Docker + CD Staging** | — | — | ~3m56s | — |
+| **Pipeline complet** (hors attente prod) | — | — | **4m36s** | — |
 
 ### 2.6 PR Check
 
