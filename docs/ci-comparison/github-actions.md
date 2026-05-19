@@ -8,9 +8,9 @@
 
 | Fichier | Rôle | Déclencheur |
 |---------|------|-------------|
-| `ci.yml` | Build & Test (backend + frontend) | Push/PR sur `main` |
-| `cd-staging.yml` | Build Docker + Deploy staging | Après CI sur `main` |
-| `cd-prod.yml` | Build Docker + Deploy production | Après CI sur `main` |
+| `ci.yml` | Build & Test (2 jobs parallèles) + Docker push | Push/PR sur `main` |
+| `cd-staging.yml` | Deploy staging (pull sha) + retag :staging | Après CI sur `main` |
+| `cd-prod.yml` | Deploy production + retag :latest | Après CI sur `main` |
 | `pr-check.yml` | Vérification PR (2 jobs parallèles) | Pull Request |
 | `mirror.yml` | Synchronisation vers les autres plateformes | Push sur `main` |
 
@@ -72,14 +72,71 @@ Le projet DKPT n'utilise pas encore les reusable workflows (potentielle variante
 
 ---
 
+## Optimisation : Parallélisation des jobs CI
+
+### Contexte
+
+La configuration initiale de `ci.yml` exécutait backend et frontend **séquentiellement**
+dans un seul job `build-and-test`. Cette approche simple est courante mais sous-exploite
+le potentiel de parallélisation de GitHub Actions.
+
+### Avant — 1 job séquentiel
+
+```
+build-and-test (1 runner)
+  ├── Setup .NET
+  ├── Restore / Build / Test backend   → ~20s
+  ├── Setup Node.js
+  ├── npm ci / lint --fix / lint / build → ~60s
+  └── (total : ~1m24s)
+```
+
+### Après — 2 jobs parallèles
+
+```
+backend-build-test (runner A)     frontend-build (runner B)
+  ├── Setup .NET                    ├── Setup Node.js
+  ├── Restore dependencies          ├── npm ci
+  ├── Build backend                 ├── Lint
+  └── Run tests        → 29s       └── Build frontend   → 54s
+                  ↘               ↙
+              docker-build-sha
+               (attend les 2)
+```
+
+### Résultats mesurés
+
+| Métrique | Séquentiel (avant) | Parallèle (après) | Gain |
+|---------|:---------:|:---------:|:----:|
+| **Backend** | ~20s | **29s** | *(overhead runner)* |
+| **Frontend** | ~60s | **54s** | |
+| **CI total effectif** | **~1m24s** | **~54s** | **−30s (~36%)** |
+
+> Le backend parallèle affiche 29s (vs 20s séquentiel) car chaque job démarre
+> un nouveau runner (checkout + setup .NET ~10s d'overhead). La performance
+> globale est néanmoins meilleure car les deux s'exécutent simultanément.
+
+### Lint simplifié
+
+La double passe lint (`--fix` puis strict) a été supprimée — alignement avec
+GitLab CI, Bitbucket et Azure DevOps qui n'exécutent qu'une seule passe.
+
+> Commit d'optimisation : `e056145`  
+> Message : `perf(ci): parallelize backend + frontend jobs in GitHub CI [ci:github]`
+
+---
+
 ## Temps d'exécution observés
 
-| Pipeline | Durée moyenne | Notes |
-|----------|:---:|-------|
-| CI (build & test) | ~1m16s | Backend + Frontend séquentiel |
-| CD Docker | ~2m42s | Build multi-stage + push |
-| CD Deploy | ~9s | SSH simple |
-| **Total CI+CD** | **~4m07s** | Push to deploy |
+| Pipeline | Durée | Architecture | Notes |
+|----------|:-----:|:------------:|-------|
+| **CI backend** | **29s** | job A (runner dédié) | restore + build + test |
+| **CI frontend** | **54s** | job B (runner dédié) | install + lint + build |
+| **CI total effectif** | **~54s** | parallèle | job le plus lent |
+| **Docker Build & Push** | **~2m40s** | runner ARM64 | backend 53s + frontend 1m21s |
+| **CD Staging** | **~50s** | 2 jobs | deploy 28s + retag 22s |
+| **CD Production** | **~48s** | 2 jobs | deploy 33s + retag 15s |
+| **Pipeline complet** | **~4m24s** | steps actifs | CI + Docker + Staging |
 
 ---
 
