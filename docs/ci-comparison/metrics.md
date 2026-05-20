@@ -807,11 +807,35 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 
 #### Tableau de collecte — Échantillon 3b (à remplir)
 
-| Métrique | Échantillon 3a (avec setup) | Échantillon 3b (sans setup-dotnet) | Δ estimé |
-|----------|:---------------------------:|:----------------------------------:|:--------:|
-| **CI Backend** | **1m11s** | — | ~−35s |
-| **CI Frontend** | **59s** | — | ~−2s |
-| **CI total** (parallèle) | **1m11s** | — | ~−35s |
-| **Docker build total** | **5m0s** | — | = |
-| **CD Staging total** | **1m29s** | — | = |
-| **CD Prod total** | **2m9s** | — | = |
+| Métrique | Échantillon 3a (avec setup) | Échantillon 3b (sans setup-dotnet) | Δ |
+|----------|:---------------------------:|:----------------------------------:|:-:|
+| **CI Backend** | **1m11s** | **39s** | **−32s (−45%)** ✅ |
+| **CI Frontend** | **59s** | **1m0s** | ~= |
+| **CI total** (parallèle) | **1m11s** | **1m0s** | −11s (−15%) |
+| **Docker build frontend** | **2m51s** | **2m20s** | −31s |
+| **Docker build backend** | **1m47s** | **1m59s** | +12s (variation VPS) |
+| **Docker build total** | **5m0s** | **4m43s** | −17s |
+| **CD Staging total** (mur à mur) | **1m29s** | **39s** | −50s ¹ |
+| **CD Prod** (steps actifs) | Deploy **19s** + Retag **14s** | Deploy **21s** + Retag **14s** | ~= |
+| **CD Prod total** (mur à mur) | **2m9s** | **55m5s** ² | N/A |
+
+> ¹ La réduction de 1m29s → 39s sur CD Staging combine deux effets :
+> le retrait de setup-dotnet (−32s sur CI) accélère le déclenchement du CD,
+> et le cache des actions JS est chaud (2ème run consécutif).
+>
+> ² CD Prod **non représentatif** : durée totale inclut une attente d'approbation
+> manuelle (Protection Rule "Prod"). Les steps actifs (21s + 14s = 35s) sont
+> comparables aux runs précédents.
+
+#### Conclusion Échantillon 3b
+
+> **Validation confirmée** : le retrait de `setup-dotnet` économise **~32s** sur
+> le job backend CI, exactement conforme à l'estimation (~30-40s). Sur un runner
+> hosted GitHub `ubuntu-22.04`, .NET 9 est bien pré-installé et opérationnel
+> sans action de setup.
+>
+> **Valeurs de référence retenues pour Échantillon 3 (GitHub)** :
+> - CI total : **1m0s** (3b optimisé)
+> - Docker build : **4m43s**
+> - CD Staging : **39s** (mur à mur, actions cache chaud)
+> - CD Prod steps actifs : **35s**

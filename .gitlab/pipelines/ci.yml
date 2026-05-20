@@ -6,9 +6,9 @@
 # avec le tag :sha-{CI_COMMIT_SHORT_SHA}.
 # Les pipelines CD (cd-staging, cd-prod) pull cette image — pas de rebuild.
 #
-# Runner : VPS Staging ARM64 self-hosted (tag: unbuntu_arm64)
-# → Build natif linux/arm64, pas de QEMU nécessaire
-# Équivalent de : .github/workflows/ci.yml (runner ubuntu-24.04-arm)
+# Runner CI : GitLab shared runners (hosted) — image Docker spécifiée par job
+# Runner Docker/CD : VPS Staging ARM64 self-hosted (tag: unbuntu_arm64)
+# Configuration équitable Hybrid Optimal (Échantillon 3)
 # ============================================
 
 stages:
@@ -26,8 +26,7 @@ variables:
 # ============================================
 backend-build-test:
   stage: build-test
-  tags:
-    - unbuntu_arm64
+  # Pas de tags → GitLab shared runner (hosted) — Hybrid Optimal Échantillon 3
   image: mcr.microsoft.com/dotnet/sdk:9.0
   script:
     - cd backend
@@ -45,8 +44,7 @@ backend-build-test:
 # ============================================
 frontend-lint-build:
   stage: build-test
-  tags:
-    - unbuntu_arm64
+  # Pas de tags → GitLab shared runner (hosted) — Hybrid Optimal Échantillon 3
   image: node:22-alpine
   script:
     - cd frontend
