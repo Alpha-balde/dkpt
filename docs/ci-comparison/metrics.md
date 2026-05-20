@@ -427,8 +427,334 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 | Fiabilité — 11 problèmes, debugging | ✅ Documenté | §5.1–5.2 |
 | Fonctionnalités architecturales | ✅ Documenté | §6 (13 critères) |
 | QR3 — Réutilisabilité | ✅ Documenté | GitHub `workflow_call`, GitLab `include:`, Azure templates, Bitbucket anchors |
+| **GitHub self-hosted ARM64 VPS** | ✅ Collecté | §9 — Échantillon 2, comparaison hosted vs self-hosted |
 
 ```bash
 # Commande de vérification des lignes YAML (archivée — résultats dans §4.1)
 wc -l .github/workflows/*.yml .gitlab-ci.yml .gitlab/pipelines/*.yml bitbucket-pipelines.yml .azuredevops/*.yml .azuredevops/templates/*.yml
 ```
+
+---
+
+## 9. Échantillons comparatifs — Évolution de configuration GitHub Actions
+
+> Cette section documente des mesures complémentaires prises avec des **configurations
+> de runner différentes** sur GitHub Actions, afin d'isoler l'impact du type de runner
+> sur les performances. Les autres plateformes sont inchangées.
+
+### Configuration des échantillons
+
+| Paramètre | Échantillon 1 (référence §2) | Échantillon 2 |
+|-----------|:----------------------------:|:-------------:|
+| **Date** | 2026-05-19 | 2026-05-20 |
+| **Runner CI** | `ubuntu-24.04-arm` (GitHub-hosted) | `self-hosted` ARM64 (VPS staging) |
+| **Runner Docker build** | `ubuntu-24.04-arm` (GitHub-hosted) | `self-hosted` ARM64 (VPS staging) |
+| **Runner CD deploy** | `ubuntu-latest` (GitHub-hosted) | `self-hosted` ARM64 (VPS staging) |
+| **Runner retag** | `ubuntu-24.04-arm` (GitHub-hosted) | `self-hosted` ARM64 (VPS staging) |
+| **Cache Docker** | `type=gha` (0% hit) | `type=gha` (0% hit) |
+| **Commit** | `d0bc196` | `0d85f88` |
+| **Pipeline** | CI #78 / Staging #44 / Prod #50 | CI #— / Staging #51 / Prod #57 |
+
+> **Note** : Le runner self-hosted est le VPS staging ARM64 mutualisé avec GitLab,
+> Bitbucket et Azure. Le cache Docker `type=gha` est lié au runner GitHub — un runner
+> self-hosted **partage le même cache GHA** s'il est authentifié avec le même token.
+> Le hit était à 0% dans les deux cas (premier run après changement de config).
+
+---
+
+### 9.1 CI — Build & Test (Échantillon 2 vs Échantillon 1)
+
+| Step | Échantillon 1 (GitHub-hosted) | Échantillon 2 (self-hosted VPS) | Δ |
+|------|:-----------------------------:|:-------------------------------:|:-:|
+| **Backend** (restore + build + test) | **29s** | **38s** | +9s (+31%) |
+| **Frontend** (npm ci + lint + build) | **54s** | **1m35s** | +41s (+76%) |
+| **CI total** (parallèle, job le plus lent) | **~54s** | **~1m35s** | +41s (+76%) |
+
+> **Analyse** : Le runner self-hosted VPS est significativement plus lent sur le
+> frontend (+76%). Cela s'explique par les ressources partagées du VPS (4 vCPU, 8 GB
+> mutualisés entre l'application DKPT + 4 runners CI/CD). Le runner GitHub-hosted
+> `ubuntu-24.04-arm` bénéficie de ressources dédiées.
+
+---
+
+### 9.2 Docker Build (Échantillon 2 vs Échantillon 1)
+
+| Métrique | Échantillon 1 (GitHub-hosted) | Échantillon 2 (self-hosted VPS) | Δ |
+|----------|:-----------------------------:|:-------------------------------:|:-:|
+| **Docker build backend** | **~53s** | **1m47s** | +54s (+102%) |
+| **Docker build frontend** | **~1m21s** | **2m31s** | +70s (+86%) |
+| **Docker build total** (job) | **2m40s** | **4m54s** | +2m14s (+84%) |
+| **Cache Docker** | `type=gha` (0%) | `type=gha` (0%) | = |
+
+> **Analyse** : Le build Docker est ~2× plus lent sur le self-hosted VPS. La différence
+> s'explique par la contention CPU : le VPS héberge simultanément l'application Docker
+> (staging) et le runner CI/CD. Les runners GitHub-hosted disposent de vCPU dédiés.
+
+---
+
+### 9.3 CD Staging (Échantillon 2 vs Échantillon 1)
+
+| Step | Échantillon 1 (GitHub-hosted) | Échantillon 2 (self-hosted VPS) | Δ |
+|------|:-----------------------------:|:-------------------------------:|:-:|
+| **Deploy Staging** (SSH + docker compose) | **28s** | **23s** | −5s (−18%) |
+| **Retag :staging** | **22s** | **13s** | −9s (−41%) |
+| **CD Staging total** (steps actifs) | **50s** | **36s** | −14s (−28%) |
+| **CD Staging total** (pipeline mur à mur) | **58s** | **1m35s** | +37s |
+
+> **Analyse** : Les steps de déploiement SSH sont plus rapides sur le self-hosted
+> (le runner est sur le même réseau VPS que la cible). En revanche, le temps
+> mur à mur est plus long car le runner doit récupérer les actions JavaScript
+> (`appleboy/ssh-action`) qui ne sont pas en cache local.
+
+---
+
+### 9.4 CD Production (Échantillon 2 vs Échantillon 1)
+
+| Step | Échantillon 1 (GitHub-hosted) | Échantillon 2 (self-hosted VPS) | Δ |
+|------|:-----------------------------:|:-------------------------------:|:-:|
+| **CD Prod total** (mur à mur) | **3m39s** | **2m0s** | −1m39s |
+
+> **Note** : Le temps mur à mur CD Prod inclut l'attente `workflow_run`.
+> La réduction s'explique par le fait que le runner self-hosted enchaîne
+> plus vite les jobs (pas de provisioning de VM).
+
+---
+
+### 9.5 Synthèse comparative — GitHub-hosted vs Self-hosted VPS
+
+| Métrique | GitHub-hosted ARM64 | Self-hosted VPS ARM64 | Δ | Avantage |
+|----------|:-------------------:|:---------------------:|:-:|:--------:|
+| **CI total** | **54s** | **1m35s** | +41s | GitHub-hosted |
+| **Docker build total** | **2m40s** | **4m54s** | +2m14s | GitHub-hosted |
+| **CD Staging** (steps actifs) | **50s** | **36s** | −14s | Self-hosted |
+| **CD Prod** (mur à mur) | **3m39s** | **2m0s** | −1m39s | Self-hosted |
+| **CI + Docker + CD Staging** | **~4m24s** | **~7m05s** | +2m41s | GitHub-hosted |
+| **Quota hosted consommé** | **~9 min** | **0 min** | −9 min | Self-hosted |
+
+> **Conclusion** : Le runner GitHub-hosted `ubuntu-24.04-arm` est **plus rapide
+> pour les tâches de compilation et de build Docker** grâce à des ressources CPU
+> dédiées. Le runner self-hosted VPS est **plus efficace pour les déploiements SSH**
+> (réseau local) et **ne consomme aucun quota** hosted.
+>
+> Pour un projet en production, la combinaison optimale est :
+> - **CI + Docker build** → GitHub-hosted (ressources dédiées)
+> - **CD deploy** → Self-hosted (réseau VPS, quota préservé)
+>
+> C'est précisément la configuration de l'**Échantillon 1** (référence §2),
+> qui représente donc la configuration la plus performante pour GitHub Actions.
+
+---
+
+### 9.6 Run 2 — Self-hosted VPS (cache actions chaud)
+
+> Deuxième exécution avec le runner self-hosted, à quelques minutes d'intervalle.
+> Objectif : mesurer l'impact du **cache local des actions JavaScript** (`appleboy/ssh-action`, etc.)
+> après le premier run.
+
+| Métrique | Run 1 (self-hosted) | Run 2 (self-hosted) | Δ |
+|----------|:-------------------:|:-------------------:|:-:|
+| **Backend** | **38s** | **30s** | −8s |
+| **Frontend** | **1m35s** | **1m20s** | −15s |
+| **CI total** (parallèle) | **1m35s** | **1m20s** | −15s |
+| **Docker build frontend** | **2m31s** | **2m26s** | −5s |
+| **Docker build backend** | **1m47s** | **1m44s** | −3s |
+| **Docker build total** (job) | **4m54s** | **4m36s** | −18s |
+| **Cache Docker** | 0% | 0% | = |
+| **CD Staging total** (mur à mur) | **1m35s** | **44s** | **−51s** |
+| **Deploy Staging** | **23s** | **22s** | −1s |
+| **Retag :staging** | **13s** | **13s** | = |
+| **CD Prod total** (mur à mur) | **2m0s** | **2m15s** | +15s |
+| **Deploy Production** | — | **20s** | — |
+| **Retag :latest** | — | **13s** | — |
+
+> **Observation clé — Cache des actions JS** :
+> Le temps mur à mur du CD Staging chute de **1m35s → 44s (−51s)** entre le Run 1 et
+> le Run 2. Cette différence s'explique par le **cache local des actions JavaScript** :
+> lors du Run 1, le runner télécharge `appleboy/ssh-action`, `appleboy/scp-action`, etc.
+> depuis GitHub. Lors du Run 2, ces actions sont en cache local sur le VPS → démarrage
+> quasi-instantané.
+>
+> Le **cache Docker reste à 0%** sur les deux runs. Le cache `type=gha` est lié au
+> token GitHub du runner. Avec un runner self-hosted, le cache est bien stocké sur
+> les serveurs GitHub (token identique) mais les **layers Docker ont changé** entre
+> les commits → miss cache attendu.
+
+### 9.7 Stabilisation — Valeurs représentatives self-hosted (cache chaud)
+
+> Le Run 2 est plus représentatif des performances **en conditions normales** (cache
+> d'actions chaud). Les valeurs à retenir pour comparaison sont celles du Run 2.
+
+| Métrique | Échantillon 1 (hosted, réf.) | Échantillon 2 Run 2 (self-hosted, stable) | Δ |
+|----------|:----------------------------:|:-----------------------------------------:|:-:|
+| **CI total** | **54s** | **1m20s** | +26s (+48%) |
+| **Docker build total** | **2m40s** | **4m36s** | +1m56s (+73%) |
+| **CD Staging** (mur à mur) | **58s** | **44s** | −14s (−24%) |
+| **CD Prod** (mur à mur) | **3m39s** | **2m15s** | −1m24s (−38%) |
+| **Pipeline total** (CI→Staging) | **~4m24s** | **~6m40s** | +2m16s |
+| **Quota hosted consommé** | **~9 min** | **0 min** | −9 min |
+
+---
+
+## 10. Configuration Équitable "Hybrid Optimal" — Échantillon 3
+
+> **Statut** : 📋 Planifié — configuration documentée, implémentation et collecte à venir.
+>
+> Cette configuration vise à **maximiser l'équité de la comparaison** en isolant
+> deux variables indépendantes :
+> 1. **Performance du hosted runner** (CI uniquement) — chaque plateforme utilise ses runners natifs
+> 2. **Performance Docker + déploiement** — même matériel ARM64 pour toutes les plateformes
+
+### 10.1 Principe et justification
+
+Les mesures précédentes (§2 et §9) ont montré que le type de runner impacte fortement
+les résultats. Pour une comparaison académiquement rigoureuse, la stratégie retenue est :
+
+| Phase | Runner | Justification |
+|-------|:------:|---------------|
+| **CI — lint + test** | Hosted (plateforme) | Mesure la qualité intrinsèque de chaque plateforme |
+| **Docker build + push** | Self-hosted ARM64 VPS | Élimine la variable matérielle — même CPU pour tous |
+| **CD Staging + Prod** | Self-hosted ARM64 VPS | Réseau local VPS, même latence pour tous |
+
+Cette configuration correspond à ce que **Azure DevOps utilise déjà** en §2
+(référence), ce qui valide son utilisation comme configuration "naturelle optimale".
+
+---
+
+### 10.2 Harmonisation de l'environnement CI hosted
+
+#### Problématique
+
+Les plateformes ne s'exécutent pas sur le même type de runtime pour les jobs CI :
+
+| Plateforme | Runtime CI | Contrôle OS |
+|------------|:----------:|:-----------:|
+| GitHub Actions | VM directe | ✅ `runs-on: ubuntu-22.04` |
+| Azure DevOps | VM directe | ✅ `vmImage: ubuntu-22.04` |
+| GitLab CI | Conteneur Docker sur shared runner | ⚠️ Via `image:` (pas l'OS host) |
+| Bitbucket | Conteneur Docker sur cloud runner | ⚠️ Via `image:` (pas l'OS host) |
+
+> **Observation** : GitHub et Azure exposent l'OS de la VM d'exécution via `runs-on`/`vmImage`.
+> GitLab et Bitbucket exécutent les jobs dans des **conteneurs Docker** sur leurs shared/cloud
+> runners — l'OS du runner host n'est pas configurable via YAML. L'harmonisation réelle
+> passe par les **images Docker des jobs CI**.
+
+#### Choix d'harmonisation
+
+**GitHub et Azure — OS de la VM :**
+
+| Runner | Version choisie | Raison |
+|--------|:--------------:|--------|
+| `ubuntu-22.04` | LTS Jammy | Version stable commune aux 4 plateformes en 2026 |
+
+> `ubuntu-latest` est déconseillé pour les mesures : il peut changer de version
+> (22.04 → 24.04) selon les plateformes et dans le temps, rendant les résultats
+> non reproductibles.
+
+**GitLab et Bitbucket — Images Docker des jobs :**
+
+L'OS du conteneur CI est déjà harmonisé via les images Docker :
+
+| Job | Image Docker | OS base |
+|-----|:------------:|:-------:|
+| Backend (dotnet) | `mcr.microsoft.com/dotnet/sdk:9.0` | Debian 12 (Bookworm) |
+| Frontend (node) | `node:22-alpine` | Alpine 3.x |
+
+> Ces images sont **identiques sur GitLab et Bitbucket**, ce qui garantit un environnement
+> d'exécution cohérent pour les jobs CI de ces deux plateformes.
+>
+> La différence Debian/Alpine (GitLab+Bitbucket) vs Ubuntu 22.04 (GitHub+Azure) est
+> une contrainte structurelle des plateformes. Elle est documentée et acceptable car
+> les outils (.NET 9, Node.js 22) ont un comportement identique sur les deux bases.
+
+---
+
+### 10.3 Configuration exacte par plateforme (Échantillon 3)
+
+#### GitHub Actions
+
+| Job | `runs-on` | Changement vs Échantillon 2 |
+|-----|:---------:|:---------------------------:|
+| `backend-build-test` | `ubuntu-22.04` | ✅ Retour hosted (était: `self-hosted`) |
+| `frontend-build` | `ubuntu-22.04` | ✅ Retour hosted (était: `self-hosted`) |
+| `docker-build-sha` | `self-hosted` | Inchangé ✅ |
+| `deploy` (staging) | `self-hosted` | Inchangé ✅ |
+| `deploy` (prod) | `self-hosted` | Inchangé ✅ |
+| `retag` (staging+prod) | `self-hosted` | Inchangé ✅ |
+
+#### GitLab CI
+
+| Job | Tags runner | Changement vs §2 |
+|-----|:-----------:|:-----------------:|
+| `backend-build-test` | *(aucun — shared runner hosted)* | ⚠️ Retrait tag `ubuntu_arm64` |
+| `frontend-lint-build` | *(aucun — shared runner hosted)* | ⚠️ Retrait tag `ubuntu_arm64` |
+| `docker-build-sha` | `[ubuntu_arm64]` | Inchangé ✅ |
+| `deploy-staging` | `[ubuntu_arm64]` | Inchangé ✅ |
+| `deploy-production` | `[ubuntu_arm64]` | Inchangé ✅ |
+
+#### Bitbucket Pipelines
+
+| Step | `runs-on` | Changement vs §2 |
+|------|:---------:|:-----------------:|
+| Backend Build & Test | *(aucun — cloud runner)* | ⚠️ Retrait `runs-on` |
+| Frontend Lint & Build | *(aucun — cloud runner)* | ⚠️ Retrait `runs-on` |
+| Docker Build & Push | `[self.hosted, linux, arm64]` | Inchangé ✅ |
+| Deploy Staging | `[self.hosted, linux, arm64]` | Inchangé ✅ |
+| Deploy Production | `[self.hosted, linux, arm64]` | Inchangé ✅ |
+
+#### Azure DevOps
+
+| Job | Pool | Changement |
+|-----|:----:|:----------:|
+| `backend-build-test` | `ubuntu-22.04` (hosted) | ⚠️ Fixer version (était `ubuntu-latest`) |
+| `frontend-lint-build` | `ubuntu-22.04` (hosted) | ⚠️ Fixer version (était `ubuntu-latest`) |
+| `docker-build-sha` | `DKPT-ARM64` (self-hosted) | Inchangé ✅ |
+| `deploy-staging` | `DKPT-ARM64` (self-hosted) | Inchangé ✅ |
+| `deploy-production` | `DKPT-ARM64` (self-hosted) | Inchangé ✅ |
+
+---
+
+### 10.4 Tableau de collecte — Échantillon 3 (à remplir)
+
+> Les valeurs marquées `—` seront collectées après implémentation.
+
+#### CI — Build & Test
+
+| Step | GitHub | GitLab | Bitbucket | Azure |
+|------|:------:|:------:|:---------:|:-----:|
+| **Backend** | — | — | — | — |
+| **Frontend** | — | — | — | — |
+| **CI total** (parallèle) | — | — | — | — |
+| **Runner type** | Hosted `ubuntu-22.04` | Shared runner | Cloud runner | Hosted `ubuntu-22.04` |
+
+#### Docker Build
+
+| Métrique | GitHub | GitLab | Bitbucket | Azure |
+|----------|:------:|:------:|:---------:|:-----:|
+| **Docker build total** | — | — | — | — |
+| **Cache Docker** | — | — | — | — |
+| **Runner** | `self-hosted` VPS | `ubuntu_arm64` VPS | `self.hosted` VPS | `DKPT-ARM64` VPS |
+
+#### CD Staging
+
+| Métrique | GitHub | GitLab | Bitbucket | Azure |
+|----------|:------:|:------:|:---------:|:-----:|
+| **Deploy** | — | — | — | — |
+| **Retag** | — | — | — | — |
+| **Total** (mur à mur) | — | — | — | — |
+
+#### CD Production
+
+| Métrique | GitHub | GitLab | Bitbucket | Azure |
+|----------|:------:|:------:|:---------:|:-----:|
+| **Total** (hors attente manuelle) | — | — | — | — |
+
+---
+
+### 10.5 Fichiers à modifier
+
+| Fichier | Modification |
+|---------|-------------|
+| `.github/workflows/ci.yml` | `runs-on: ubuntu-22.04` sur `backend-build-test` et `frontend-build` |
+| `.gitlab/pipelines/ci.yml` | Retirer `tags: [ubuntu_arm64]` sur `backend-build-test` et `frontend-lint-build` |
+| `bitbucket-pipelines.yml` | Retirer `runs-on:` sur les steps Backend et Frontend uniquement |
+| `.azuredevops/ci.yml` | `vmImage: ubuntu-22.04` (fixer la version) |
