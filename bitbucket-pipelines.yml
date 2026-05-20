@@ -11,9 +11,9 @@
 # Exemples :
 #   git commit -m "fix: auth [ci:bitbucket]"
 #   git commit -m "release: v1.2 [ci:bitbucket]"
-# Note : Bitbucket ne supporte pas les conditions natives sur le message
-# de commit — le guard est implémenté en bash (git log) en tête de step.
-#
+# Runner CI : Bitbucket cloud runners (hosted) — image Docker spécifiée par step
+# Runner Docker/CD : VPS self-hosted ARM64 (runs-on: [self.hosted, linux])
+# Configuration équitable Hybrid Optimal (Échantillon 3)
 # Flux BODM dans branches: main:
 #   CI (build+test) → Docker build :sha → Deploy staging → Retag :staging
 #                                       → Deploy prod (manual) → Retag :latest
@@ -38,9 +38,7 @@ definitions:
     - step: &build-test-backend
         name: 'Backend — Build & Test'
         image: mcr.microsoft.com/dotnet/sdk:9.0
-        runs-on:
-          - self.hosted
-          - linux
+        # Pas de runs-on → Bitbucket cloud runner (hosted) — Hybrid Optimal Échantillon 3
         caches:
           - dotnetcore
         script:
@@ -55,9 +53,7 @@ definitions:
     - step: &build-frontend
         name: 'Frontend — Lint & Build'
         image: node:22-alpine
-        runs-on:
-          - self.hosted
-          - linux
+        # Pas de runs-on → Bitbucket cloud runner (hosted) — Hybrid Optimal Échantillon 3
         caches:
           - node
         script:

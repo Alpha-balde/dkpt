@@ -721,42 +721,56 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 
 | Step | GitHub | GitLab | Bitbucket | Azure |
 |------|:------:|:------:|:---------:|:-----:|
-| **Backend** | **1m11s** ¹ | — | — | — |
-| **Frontend** | **59s** | — | — | — |
-| **CI total** (parallèle) | **1m11s** | — | — | — |
-| **Runner type** | Hosted `ubuntu-22.04` | Shared runner | Cloud runner | Hosted `ubuntu-22.04` |
+| **Backend** | **1m11s** ¹ | **57s** | — | — |
+| **Frontend** | **59s** | **1m36s** ² | — | — |
+| **CI total** (séquentiel/parallèle) | **1m11s** | **2m33s** ³ | — | — |
+| **Runner type** | Hosted `ubuntu-22.04` | Shared runner (Docker) | Cloud runner | Hosted `ubuntu-22.04` |
 
 > ¹ **Observation importante** : Sur ubuntu-22.04 hosted, `setup-dotnet` télécharge
 > .NET 9 alors qu'il est **déjà pré-installé** sur ce runner. Cela ajoute ~30-40s
-> inutilement. De même, `setup-node` est utilisé uniquement pour le cache npm
-> (Node.js 22 étant pré-installé). Ces deux actions seront retirées/optimisées
-> dans l'**Échantillon 3b** ci-dessous.
+> inutilement. Retiré dans l'Échantillon 3b (→ 39s pour le backend).
+>
+> ² Frontend GitLab plus lent : image `node:22-alpine` téléchargée + `npm ci` sur
+> shared runner sans cache persistant entre runs. Alpine = image légère mais
+> téléchargement réseau à chaque run.
+>
+> ³ GitLab exécute les jobs CI en **séquentiel** par défaut dans la même stage
+> (`build-test`), contrairement à GitHub qui les exécute en parallèle.
+> Total réel = backend (57s) + frontend (1m36s) = **2m33s**.
 
 #### Docker Build
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Docker build backend** | **1m47s** | — | — | — |
-| **Docker build frontend** | **2m51s** | — | — | — |
-| **Docker build total** | **5m0s** | — | — | — |
-| **Cache Docker** | 0% | — | — | — |
-| **Runner** | `self-hosted` VPS | `ubuntu_arm64` VPS | `self.hosted` VPS | `DKPT-ARM64` VPS |
+| **Docker build backend** | **1m47s** | — ⁴ | — | — |
+| **Docker build frontend** | **2m51s** | — ⁴ | — | — |
+| **Docker build total** | **5m0s** | **1m18s** ⁴ | — | — |
+| **Cache Docker** | 0% | 0% | — | — |
+| **Runner** | `self-hosted` VPS | `unbuntu_arm64` VPS | `self.hosted` VPS | `DKPT-ARM64` VPS |
+
+> ⁴ **Écart majeur GitLab vs GitHub** : GitLab utilise `docker build` natif
+> (sans BuildKit/Buildx), GitHub utilise `docker/build-push-action@v6` avec
+> driver `docker-container` (BuildKit). L'overhead BuildKit étant absent sur
+> GitLab, le Docker build est **3,6× plus rapide** (1m18s vs 4m43s).
+> À noter : GitLab ne produit pas d'attestations de provenance (pas de `--attest`).
 
 #### CD Staging
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Deploy** | **19s** | — | — | — |
-| **Retag** | **11s** | — | — | — |
-| **Total** (mur à mur) | **1m29s** | — | — | — |
+| **Deploy** | **19s** | **17s** | — | — |
+| **Retag** | **11s** | **13s** | — | — |
+| **Total** (mur à mur) | **1m29s** | **30s** | — | — |
 
 #### CD Production
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Deploy** | **19s** | — | — | — |
-| **Retag** | **14s** | — | — | — |
-| **Total** (mur à mur) | **2m9s** | — | — | — |
+| **Deploy** | **19s** | **17s** | — | — |
+| **Retag** | **14s** | **13s** | — | — |
+| **Total** (mur à mur) | **2m9s** | **30s** ⁵ | — | — |
+
+> ⁵ CD Prod GitLab : queued 321s (attente approbation manuelle). Steps actifs = 30s.
 
 ---
 
