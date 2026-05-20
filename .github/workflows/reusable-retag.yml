@@ -38,7 +38,7 @@ on:
 jobs:
   retag:
     name: Retag :sha → :${{ inputs.tag }}
-    runs-on: ubuntu-24.04-arm
+    runs-on: self-hosted
 
     steps:
       - name: Login to Docker Hub

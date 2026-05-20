@@ -50,7 +50,7 @@ jobs:
   # ============================================
   backend-build-test:
     name: Backend — Build & Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]')
 
     steps:
@@ -79,7 +79,7 @@ jobs:
   # ============================================
   frontend-build:
     name: Frontend — Lint & Build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]')
 
     steps:
@@ -112,7 +112,7 @@ jobs:
   # Tag : sha-{8 premiers chars du SHA du commit}
   docker-build-sha:
     name: Docker Build & Push :sha
-    runs-on: ubuntu-24.04-arm
+    runs-on: self-hosted
     needs: [backend-build-test, frontend-build]
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci:github]'))
 

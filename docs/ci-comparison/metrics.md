@@ -19,7 +19,7 @@ Pour garantir la comparabilité des résultats :
 | **Environnement** | Même code source, même commit déclenche chaque plateforme via mirroring |
 | **Runner** | Self-hosted ARM64 sur VPS pour GitLab/Bitbucket/Azure, `ubuntu-24.04-arm` pour GitHub |
 | **Cache** | Run "chaud" (pas le 1er run) pour les métriques de durée, sauf mention contraire |
-| **Répétitions** | Minimum 3 runs par métrique, valeur médiane retenue |
+| **Répétitions** | 1 à 3 runs par métrique selon disponibilité ; valeur du run stable (cache chaud) retenue — protocole cible non toujours atteint (voir §2) |
 | **Unité de temps** | Secondes (s) ou minutes:secondes (m:ss) |
 
 ### Catégories de métriques
@@ -46,14 +46,14 @@ Pour garantir la comparabilité des résultats :
 
 | Paramètre | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
 |-----------|:--------------:|:---------:|:---------:|:------------:|
-| **Commit de référence** | `d0bc196` | `1a05dd5` | `744611b` | — |
-| **Pipeline de référence** | CI #78 / Staging #44 / Prod #50 | #2536856712 | #41 | — |
-| **Date de mesure** | 2026-05-19 | 2026-05-19 | 2026-05-19 | — |
-| **Runner CI** | `ubuntu-24.04-arm` (GitHub-hosted) | `unbuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `ubuntu-latest` + `Default` |
-| **Runner Docker build** | `ubuntu-24.04-arm` (GitHub-hosted) | `unbuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `Default` (self-hosted VPS) |
+| **Commit de référence** | `d0bc196` | `1a05dd5` | `744611b` | `e056145` *(approx.)* |
+| **Pipeline de référence** | CI #78 / Staging #44 / Prod #50 | #2536856712 | #41 | CI #15 *(collecté — ref. non notée)* |
+| **Date de mesure** | 2026-05-19 | 2026-05-19 | 2026-05-19 | 2026-05-19 |
+| **Runner CI** | `ubuntu-24.04-arm` (GitHub-hosted) | `ubuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `ubuntu-latest` + `Default` |
+| **Runner Docker build** | `ubuntu-24.04-arm` (GitHub-hosted) | `ubuntu_arm64` (self-hosted VPS) | `self.hosted` ARM64 (VPS) | `Default` (self-hosted VPS) |
 | **Executor Docker** | buildx + `build-push-action` | **Socket binding** (`/var/run/docker.sock`) | **DinD** (`services: docker`) | Shell executor (daemon local) |
 | **Cache Docker** | `type=gha` (cache GitHub Actions) | Daemon local (socket binding) | ❌ Aucun (DinD éphémère) | Daemon local (shell executor) |
-| **Lint frontend** | `--fix` + `lint` (double passe) | `lint` strict | `lint` strict | `lint` strict |
+| **Lint frontend** | `lint` strict *(simplifié après refactoring — voir §2.1)* | `lint` strict | `lint` strict | `lint` strict |
 | **SSH deploy** | `appleboy/ssh-action` (action) | `ssh`/`scp` manuels | SSH Keys natif Bitbucket | Agent local sur VPS (pas de SSH) |
 
 ### 2.1 CI — Build & Test
@@ -277,21 +277,21 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 | `.github/workflows/variante-1-parallel.yml` | 74 | *Variante archivée — remplacée par ci.yml* | GitHub (variante) |
 | `.github/workflows/variante-2-single-job.yml` | 77 | Variante 1 job séquentiel | GitHub (variante) |
 | `.github/workflows/variante-4-matrix.yml` | 92 | Variante matrix OS × version | GitHub (variante) |
-| `.gitlab-ci.yml` (orchestrateur) | 71 | GitLab |
-| `.gitlab/pipelines/ci.yml` | 86 | GitLab |
-| `.gitlab/pipelines/cd-staging.yml` | 77 | GitLab |
-| `.gitlab/pipelines/cd-prod.yml` | 80 | GitLab |
-| `.gitlab/pipelines/pr-check.yml` | 48 | GitLab |
-| `bitbucket-pipelines.yml` | 203 | Bitbucket |
-| `.azuredevops/ci.yml` | 99 | Azure |
-| `.azuredevops/cd-staging.yml` | 73 | Azure |
-| `.azuredevops/cd-prod.yml` | 54 | Azure |
-| `.azuredevops/pr-check.yml` | 38 | Azure |
-| `.azuredevops/templates/build-docker.yml` | 33 | Azure (template) |
-| `.azuredevops/templates/build-dotnet.yml` | 60 | Azure (template) |
-| `.azuredevops/templates/build-nuxt.yml` | 33 | Azure (template) |
-| `.azuredevops/templates/deploy-vps.yml` | 81 | Azure (template) |
-| `.azuredevops/templates/quality-gate.yml` | 133 | Azure (template) |
+| `.gitlab-ci.yml` (orchestrateur) | 71 | Orchestrateur — inclut les 4 pipelines enfants | GitLab |
+| `.gitlab/pipelines/ci.yml` | 86 | CI — backend + frontend + Docker push | GitLab |
+| `.gitlab/pipelines/cd-staging.yml` | 77 | CD Staging — deploy SSH + retag :staging | GitLab |
+| `.gitlab/pipelines/cd-prod.yml` | 80 | CD Prod — deploy SSH + retag :latest | GitLab |
+| `.gitlab/pipelines/pr-check.yml` | 48 | PR check | GitLab |
+| `bitbucket-pipelines.yml` | 203 | Pipeline monolithique — CI + Docker + CD Staging + CD Prod | Bitbucket |
+| `.azuredevops/ci.yml` | 99 | CI — backend + frontend + Docker push + SonarCloud | Azure |
+| `.azuredevops/cd-staging.yml` | 73 | CD Staging — deploy VPS + retag :staging | Azure |
+| `.azuredevops/cd-prod.yml` | 54 | CD Prod — deploy VPS + retag :latest | Azure |
+| `.azuredevops/pr-check.yml` | 38 | PR check | Azure |
+| `.azuredevops/templates/build-docker.yml` | 33 | Template — Docker build & push | Azure (template) |
+| `.azuredevops/templates/build-dotnet.yml` | 60 | Template — .NET restore + build + test | Azure (template) |
+| `.azuredevops/templates/build-nuxt.yml` | 33 | Template — npm ci + lint + build | Azure (template) |
+| `.azuredevops/templates/deploy-vps.yml` | 81 | Template — deploy SSH + retag | Azure (template) |
+| `.azuredevops/templates/quality-gate.yml` | 133 | Template — k6 + ZAP + Playwright (Quality Gate) | Azure (template) |
 
 > **Observation** : Bitbucket a le moins de lignes (203) car tout est dans un seul fichier.
 > Azure a le plus (604) car ses 5 templates sont réutilisés entre cd-staging et cd-prod.
@@ -319,8 +319,8 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 |-------|:------:|:------:|:---------:|:-----:|-------------|
 | **Setup initial** (connexion + secrets UI) | ~1h | ~2h | ~1h30 | ~2h30 | Azure nécessite création d'une organisation + project + service connections manuelles |
 | **Enregistrement runner self-hosted** | ~20min | ~30min | ~30min | ~1h | Azure : création agent pool + enregistrement via PAT dans l'UI DevOps |
-| **Debug problèmes critiques** | ~1h | ~5h | ~8h | ~1h | Bitbucket : 5 blocages majeurs (CRLF, SSH, DinD, `<<:` YAML, platform selector bash) |
-| **Total estimé (mise en prod)** | **~2h20** | **~7h30** | **~10h** | **~4h30** | GitHub le plus rapide (natif), Bitbucket le plus laborieux |
+| **Debug problèmes critiques** | ~1h | ~3h | ~8h | ~1h | GitLab : CRLF SSH (~1h) + DNS Docker (~1h) + setup ; Bitbucket : 5 blocages (voir §5.1) |
+| **Total estimé (mise en prod)** | **~2h20** | **~5h30** | **~10h** | **~4h30** | GitHub le plus rapide (natif), Bitbucket le plus laborieux |
 
 #### Caractéristiques de mise en place
 
@@ -331,7 +331,7 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 | **Mécanisme SSH VPS** | Secret → bash | Variable type `File` | SSH Keys natif (UI) | Service Connection | Bitbucket est le plus ergonomique ; GitHub requiert un script bash de reconstruction |
 | **Courbe d'apprentissage** | Faible | Modérée | Modérée | Élevée | Azure introduit des concepts propres : stages, pools, service connections, variable groups |
 | **Qualité documentation** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | Bitbucket : lacunes sur self-hosted avancé et ancres YAML complexes |
-| **Problèmes critiques rencontrés** | 2 | 3 | 5 | 1 | Voir section 5.1 pour le détail de chaque blocage |
+| **Problèmes critiques rencontrés** | 3 | 3 | 5 | 1 | GitHub : #1, #2, #10 — GitLab : #3, #4 — Bitbucket : #3, #5–#9 — Azure : #11 (voir §5.1) |
 
 > **Observation** : L'effort de mise en place est fortement corrélé au nombre de concepts
 > propres à chaque plateforme. GitHub Actions, en étant natif au dépôt source, évite
@@ -358,6 +358,7 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 | 8 | `Permission denied` → clé publique absente prod | Bitbucket | < 1h | SSH |
 | 9 | Socket binding non propagé aux step containers | Bitbucket | ~1h | Docker runtime |
 | 10 | CD Prod skipped → condition `workflow_run` trop stricte | GitHub | < 1h | Logique conditionnelle |
+| 11 | `npm run typecheck` → erreurs TS (`string \| undefined`) → step supprimé | Azure | ~1h | TypeScript / Config |
 
 ### 5.2 Clarté des logs (évaluation qualitative)
 
@@ -379,7 +380,7 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 | **Build Once Deploy Many natif** | ✅ | ✅ | ⚠️ (contournement) | ✅ |
 | **Cache Docker local** | ✅ `type=gha` | ✅ socket binding | ❌ DinD | ✅ daemon local |
 | **Socket binding Docker** | N/A | ✅ `config.toml` | ❌ non propagé | N/A (shell) |
-| **Templates paramétrés** | ⚠️ Reusable workflows | ⚠️ `include:` | ❌ YAML anchors | ✅ Natif |
+| **Templates paramétrés** | ✅ Reusable workflows | ✅ `include:` | ❌ YAML anchors | ✅ Natif |
 | **Quality Gate post-deploy** | ❌ | ❌ | ❌ | ✅ (k6 + ZAP + Playwright) |
 | **Analyse statique (SonarCloud)** | ❌ | ❌ | ❌ | ✅ |
 | **Approbation manuelle prod** | ✅ (environment) | ✅ `when: manual` | ✅ `trigger: manual` | ✅ (environment gate) |
@@ -395,32 +396,39 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 > Score de 1 à 5 par catégorie (5 = meilleur).
 > Pondération indicative pour mémoire à ajuster selon les critères du jury.
 
-| Catégorie | Poids | GitHub | GitLab | Bitbucket | Azure |
-|-----------|:-----:|:------:|:------:|:---------:|:-----:|
-| **Performance** (temps pipeline) | 25% | 5 | 4 | 3 | 4 |
-| **Coût** (quota + tarif) | 20% | 5 | 4 | 2 | 5 |
-| **Complexité configuration** | 20% | 4 | 3 | 4 | 3 |
-| **Fiabilité / Debugging** | 15% | 4 | 4 | 3 | 5 |
-| **Fonctionnalités architecturales** | 20% | 4 | 4 | 2 | 5 |
-| **Score pondéré** | 100% | **4.4** | **3.8** | **2.8** | **4.4** |
+| Catégorie | Poids | GitHub | GitLab | Bitbucket | Azure | Justification |
+|-----------|:-----:|:------:|:------:|:---------:|:-----:|---------------|
+| **Performance** (temps pipeline) | 25% | 4 | 3 | 3 | **5** | Azure : 2m48s, GitHub : 4m24s, Bitbucket : 4m36s, GitLab : 5m46s |
+| **Coût** (quota + tarif) | 20% | 5 | 4 | 2 | 5 | GitHub et Azure : quotas généreux + self-hosted ; Bitbucket : 50 min/mois |
+| **Complexité configuration** | 20% | 4 | 3 | 4 | 3 | Bitbucket : syntaxe simple (203L, 1 fichier) ; Azure : concepts nombreux |
+| **Fiabilité / Debugging** | 15% | 4 | 4 | 3 | 5 | Azure : logs précis + 1 seul blocage ; Bitbucket : 5 blocages critiques |
+| **Fonctionnalités architecturales** | 20% | 4 | 4 | 2 | 5 | Azure : Quality Gate, SonarCloud, templates natifs |
+| **Score pondéré** | 100% | **4.2** | **3.6** | **2.8** | **4.6** | |
 
-> ⚠️ Ce scoring est indicatif et basé sur les valeurs disponibles au 2026-05-19.
-> Les cases `—` doivent être complétées avec les mesures réelles.
+> ⚠️ Ce scoring est indicatif et basé sur les données empiriques du projet DKPT au 2026-05-19.
+> La **complexité configuration** mesure la simplicité syntaxique (YAML), pas l'effort de setup
+> (couvert par §4.3). C'est pourquoi Bitbucket score 4 malgré un setup laborieux.
 
 ---
 
-## 8. Données manquantes à collecter
+## 8. Statut de la collecte des données
 
-| Métrique | Action requise |
-|----------|---------------|
-| GitHub Actions — durée backend/frontend CI | Déclencher `[ci:github]` et relever les logs |
-| Azure DevOps — toutes les durées | Déclencher le pipeline et relever les logs |
-| Docker build — durées par plateforme | Mesurer sur 3 runs consécutifs |
-| CD Staging — durées par plateforme | Mesurer sur 3 runs consécutifs |
-| Temps de mise en place initial | Estimation rétrospective |
-| Lignes YAML GitLab (orchestrateur inclus) | Compter avec `wc -l` |
+> ✅ **Toutes les données principales ont été collectées** au 2026-05-19.
+> Ce fichier constitue le référentiel empirique complet pour la phase d'analyse du mémoire.
+
+| Domaine | Statut | Note |
+|---------|:------:|------|
+| GitHub Actions — CI, Docker, CD | ✅ Collecté | Parallélisation documentée, cache Docker à 0% sur run mesuré |
+| GitLab CI — CI, Docker, CD | ✅ Collecté | Socket binding vs DinD comparé (gain −19%) |
+| Bitbucket — CI, Docker, CD | ✅ Collecté | Cache frontend actif, DinD Docker (pas de cache) |
+| Azure DevOps — CI, Docker, CD | ✅ Collecté | Core CI (28s) vs Full CI avec SonarCloud (2m21s) |
+| Coûts — quotas, projections, TCO | ✅ Calculé | §3.1–3.5 (3 scénarios, analyse self-hosted, TCO) |
+| Complexité — YAML, variables, setup | ✅ Documenté | §4.1–4.3 (6 fichiers GitHub, Rôle colonne, effort mise en place) |
+| Fiabilité — 11 problèmes, debugging | ✅ Documenté | §5.1–5.2 |
+| Fonctionnalités architecturales | ✅ Documenté | §6 (13 critères) |
+| QR3 — Réutilisabilité | ✅ Documenté | GitHub `workflow_call`, GitLab `include:`, Azure templates, Bitbucket anchors |
 
 ```bash
-# Compter les lignes YAML de chaque plateforme
+# Commande de vérification des lignes YAML (archivée — résultats dans §4.1)
 wc -l .github/workflows/*.yml .gitlab-ci.yml .gitlab/pipelines/*.yml bitbucket-pipelines.yml .azuredevops/*.yml .azuredevops/templates/*.yml
 ```

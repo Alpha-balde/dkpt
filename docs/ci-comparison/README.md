@@ -225,3 +225,49 @@ Chaque plateforme nécessite ses propres secrets (mêmes valeurs, mêmes noms) :
 |---------------|-----|---------|:-----------:|
 | **Staging** | https://staging.dkpt.soguimod.com | `main` | Automatique |
 | **Production** | https://dkpt.soguimod.com | `main` | Manuelle |
+
+---
+
+## Statut de validation — Build Once, Deploy Many (BODM)
+
+> **Date de validation** : Mai 2026
+> Toutes les plateformes ont été testées et validées en conditions réelles
+> (déploiements effectifs sur les VPS staging et production).
+
+| Plateforme | CI | CD Staging | CD Prod | BODM | Platform Selector |
+|------------|:--:|:----------:|:-------:|:----:|:-----------------:|
+| **GitHub Actions** | ✅ | ✅ | ✅ | ✅ | `[ci:github]` |
+| **GitLab CI** | ✅ | ✅ | ✅ | ✅ | `[ci:gitlab]` |
+| **Azure DevOps** | ✅ | ✅ | ✅ | ✅ | Toujours actif |
+| **Bitbucket Pipelines** | ✅ | ✅ | ✅ | ✅* | `[ci:bitbucket]` |
+
+> \* **BODM Bitbucket** : implémenté dans un pipeline monolithique `branches: main:`
+> (CI + build sha + staging + prod dans un seul fichier). L'image n'est construite
+> qu'une seule fois et réutilisée pour staging et production — le principe BODM est
+> respecté malgré l'impossibilité de chaîner des pipelines séparés.
+
+### Architecture de déploiement validée
+
+```
+[git push main avec [ci:plateforme]]
+         │
+         ▼
+  CI — Build & Test
+  └── Docker build → :sha-{8chars} → Docker Hub   ← BUILD ONCE
+         │
+         ▼
+  CD Staging — Pull :sha → Deploy staging → Retag :staging
+         │
+         ▼ (approbation manuelle)
+  CD Prod — Pull :sha (même image) → Deploy prod → Retag :latest
+                                                  ← DEPLOY MANY
+```
+
+### Gains mesurés (BODM vs ancienne architecture)
+
+| Métrique | Sans BODM | Avec BODM |
+|----------|:---------:|:---------:|
+| Builds Docker par release | 2–3 | **1** |
+| Garantie même image staging/prod | ❌ | ✅ |
+| Temps Docker cumulé CI+CD | ~2× | ~1× |
+| Traçabilité (sha tag) | ❌ | ✅ |
