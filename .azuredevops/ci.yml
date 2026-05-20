@@ -5,6 +5,10 @@
 # puis Docker build & push (tag sha) sur agent ARM64
 # Déclenché sur push vers main
 #
+# Runner CI : Hosted ubuntu-22.04 (fixé pour reproductibilité)
+# Runner Docker/CD : Default pool (DKPT-ARM64, self-hosted VPS)
+# Configuration équitable Hybrid Optimal (Échantillon 3)
+#
 # Note : Ce fichier doit être enregistré manuellement dans l'UI
 # Azure DevOps comme un pipeline distinct.
 #
@@ -39,7 +43,7 @@ stages:
   - stage: BuildTest
     displayName: 'Build & Test'
     pool:
-      vmImage: ubuntu-latest
+      vmImage: ubuntu-22.04  # Fixé pour reproductibilité (ubuntu-latest peut basculer 22.04→24.04)
     jobs:
       # ---- Backend (.NET 9) ----
       - job: BackendTest

@@ -721,10 +721,10 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 
 | Step | GitHub | GitLab | Bitbucket | Azure |
 |------|:------:|:------:|:---------:|:-----:|
-| **Backend** | **1m11s** ¹ | **57s** | — | — |
-| **Frontend** | **59s** | **1m36s** ² | — | — |
-| **CI total** (séquentiel/parallèle) | **1m11s** | **2m33s** ³ | — | — |
-| **Runner type** | Hosted `ubuntu-22.04` | Shared runner (Docker) | Cloud runner | Hosted `ubuntu-22.04` |
+| **Backend** | **1m11s** ¹ | **57s** | **41s** | — |
+| **Frontend** | **59s** | **1m36s** ² | **4s** ⁶ | — |
+| **CI total** (séquentiel/parallèle) | **1m11s** | **2m33s** ³ | **45s** ⁷ | — |
+| **Runner type** | Hosted `ubuntu-22.04` | Shared runner (Docker) | Cloud runner (Docker) | Hosted `ubuntu-22.04` |
 
 > ¹ **Observation importante** : Sur ubuntu-22.04 hosted, `setup-dotnet` télécharge
 > .NET 9 alors qu'il est **déjà pré-installé** sur ce runner. Cela ajoute ~30-40s
@@ -737,15 +737,23 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 > ³ GitLab exécute les jobs CI en **séquentiel** par défaut dans la même stage
 > (`build-test`), contrairement à GitHub qui les exécute en parallèle.
 > Total réel = backend (57s) + frontend (1m36s) = **2m33s**.
+>
+> ⁶ **Bitbucket Frontend 4s** : cache `node` actif (Bitbucket Pipelines cache natif).
+> `npm ci` exécuté avec `node_modules/` restauré depuis le cache → install quasi-instant.
+> C'est le résultat le plus rapide observé sur l'ensemble des plateformes pour ce step.
+>
+> ⁷ Bitbucket exécute les steps en **séquentiel** (contrainte du pipeline monolithique).
+> Mais l'overhead est minimal ici : le step le plus lent (backend 41s) détermine
+> la base, et frontend (4s, cache) n'ajoute que 4s.
 
 #### Docker Build
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Docker build backend** | **1m47s** | — ⁴ | — | — |
-| **Docker build frontend** | **2m51s** | — ⁴ | — | — |
-| **Docker build total** | **5m0s** | **1m18s** ⁴ | — | — |
-| **Cache Docker** | 0% | 0% | — | — |
+| **Docker build backend** | **1m47s** | — ⁴ | **50s** | — |
+| **Docker build frontend** | **2m51s** | — ⁴ | **1m24s** | — |
+| **Docker build total** | **5m0s** | **1m18s** ⁴ | **2m40s** | — |
+| **Cache Docker** | 0% | 0% | 0% | — |
 | **Runner** | `self-hosted` VPS | `unbuntu_arm64` VPS | `self.hosted` VPS | `DKPT-ARM64` VPS |
 
 > ⁴ **Écart majeur GitLab vs GitHub** : GitLab utilise `docker build` natif
@@ -758,17 +766,18 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Deploy** | **19s** | **17s** | — | — |
-| **Retag** | **11s** | **13s** | — | — |
-| **Total** (mur à mur) | **1m29s** | **30s** | — | — |
+| **Deploy + Retag** | 19s + 11s | 17s + 13s | **36s** (inclus) | — |
+| **Total** (mur à mur) | **1m29s** | **30s** | **36s** | — |
+
+> ⁸ Bitbucket : Deploy et Retag sont dans le **même step** (pas de jobs séparés).
+> Les 36s incluent SSH + docker compose + retag :staging.
 
 #### CD Production
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Deploy** | **19s** | **17s** | — | — |
-| **Retag** | **14s** | **13s** | — | — |
-| **Total** (mur à mur) | **2m9s** | **30s** ⁵ | — | — |
+| **Deploy + Retag** | 19s + 14s | 17s + 13s | **40s** (inclus) | — |
+| **Total** (mur à mur) | **2m9s** | **30s** ⁵ | **40s** | — |
 
 > ⁵ CD Prod GitLab : queued 321s (attente approbation manuelle). Steps actifs = 30s.
 
