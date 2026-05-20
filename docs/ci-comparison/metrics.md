@@ -721,32 +721,42 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 
 | Step | GitHub | GitLab | Bitbucket | Azure |
 |------|:------:|:------:|:---------:|:-----:|
-| **Backend** | — | — | — | — |
-| **Frontend** | — | — | — | — |
-| **CI total** (parallèle) | — | — | — | — |
+| **Backend** | **1m11s** ¹ | — | — | — |
+| **Frontend** | **59s** | — | — | — |
+| **CI total** (parallèle) | **1m11s** | — | — | — |
 | **Runner type** | Hosted `ubuntu-22.04` | Shared runner | Cloud runner | Hosted `ubuntu-22.04` |
+
+> ¹ **Observation importante** : Sur ubuntu-22.04 hosted, `setup-dotnet` télécharge
+> .NET 9 alors qu'il est **déjà pré-installé** sur ce runner. Cela ajoute ~30-40s
+> inutilement. De même, `setup-node` est utilisé uniquement pour le cache npm
+> (Node.js 22 étant pré-installé). Ces deux actions seront retirées/optimisées
+> dans l'**Échantillon 3b** ci-dessous.
 
 #### Docker Build
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Docker build total** | — | — | — | — |
-| **Cache Docker** | — | — | — | — |
+| **Docker build backend** | **1m47s** | — | — | — |
+| **Docker build frontend** | **2m51s** | — | — | — |
+| **Docker build total** | **5m0s** | — | — | — |
+| **Cache Docker** | 0% | — | — | — |
 | **Runner** | `self-hosted` VPS | `ubuntu_arm64` VPS | `self.hosted` VPS | `DKPT-ARM64` VPS |
 
 #### CD Staging
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Deploy** | — | — | — | — |
-| **Retag** | — | — | — | — |
-| **Total** (mur à mur) | — | — | — | — |
+| **Deploy** | **19s** | — | — | — |
+| **Retag** | **11s** | — | — | — |
+| **Total** (mur à mur) | **1m29s** | — | — | — |
 
 #### CD Production
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Total** (hors attente manuelle) | — | — | — | — |
+| **Deploy** | **19s** | — | — | — |
+| **Retag** | **14s** | — | — | — |
+| **Total** (mur à mur) | **2m9s** | — | — | — |
 
 ---
 
@@ -758,3 +768,50 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 | `.gitlab/pipelines/ci.yml` | Retirer `tags: [ubuntu_arm64]` sur `backend-build-test` et `frontend-lint-build` |
 | `bitbucket-pipelines.yml` | Retirer `runs-on:` sur les steps Backend et Frontend uniquement |
 | `.azuredevops/ci.yml` | `vmImage: ubuntu-22.04` (fixer la version) |
+
+---
+
+### 10.6 Optimisation — Retrait de setup-dotnet (Échantillon 3b)
+
+> **Contexte** : Les runners GitHub-hosted `ubuntu-22.04` ont .NET 9 et Node.js 22
+> **pré-installés**. Les actions `setup-dotnet` et `setup-node` sont donc redondantes
+> pour l'installation — elles ajoutent du temps inutile sur les runners hosted.
+
+#### Analyse des actions de setup
+
+| Action | Rôle réel sur ubuntu-22.04 hosted | Temps gaspillé |
+|--------|:---------------------------------:|:--------------:|
+| `actions/setup-dotnet@v4` | Télécharge .NET 9 déjà présent | **~30-40s** |
+| `actions/setup-node@v4` | Node.js déjà présent ; **utile pour le cache npm** | ~2-3s |
+
+> **Décision** :
+> - `setup-dotnet` → **retiré** (remplacé par `dotnet --version` pour vérification)
+> - `setup-node` → **conservé avec `cache: "npm"`** — Node.js est pré-installé
+>   mais l'action fournit le cache npm via GitHub Actions Cache. Sans elle,
+>   `npm ci` télécharge ~200MB à chaque run (perte de ~20-30s).
+
+#### Changement appliqué dans `.github/workflows/ci.yml`
+
+```yaml
+# AVANT (Échantillon 3a)
+- name: Setup .NET ${{ env.DOTNET_VERSION }}
+  uses: actions/setup-dotnet@v4
+  with:
+    dotnet-version: ${{ env.DOTNET_VERSION }}   # ~30-40s inutiles
+
+# APRÈS (Échantillon 3b)
+# .NET 9 est pré-installé sur ubuntu-22.04 — setup-dotnet non requis
+- name: Check .NET version
+  run: dotnet --version                          # ~1s
+```
+
+#### Tableau de collecte — Échantillon 3b (à remplir)
+
+| Métrique | Échantillon 3a (avec setup) | Échantillon 3b (sans setup-dotnet) | Δ estimé |
+|----------|:---------------------------:|:----------------------------------:|:--------:|
+| **CI Backend** | **1m11s** | — | ~−35s |
+| **CI Frontend** | **59s** | — | ~−2s |
+| **CI total** (parallèle) | **1m11s** | — | ~−35s |
+| **Docker build total** | **5m0s** | — | = |
+| **CD Staging total** | **1m29s** | — | = |
+| **CD Prod total** | **2m9s** | — | = |

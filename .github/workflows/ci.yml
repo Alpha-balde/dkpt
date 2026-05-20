@@ -57,10 +57,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET ${{ env.DOTNET_VERSION }}
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+      # .NET 9 est pré-installé sur ubuntu-22.04 — setup-dotnet non requis
+      - name: Check .NET version
+        run: dotnet --version
 
       - name: Restore backend dependencies
         run: dotnet restore
@@ -86,7 +85,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ env.NODE_VERSION }}
+      # Node.js 22 est pré-installé sur ubuntu-22.04
+      # setup-node conservé uniquement pour le cache npm (actions/cache intégré)
+      - name: Setup Node.js cache
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
