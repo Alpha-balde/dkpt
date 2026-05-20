@@ -308,12 +308,37 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 
 ### 4.3 Effort de mise en place
 
-| Étape | GitHub Actions | GitLab CI | Bitbucket | Azure DevOps |
-|-------|:--------------:|:---------:|:---------:|:------------:|
-| **Connexion repo** | Native | Via `mirror.yml` | Via `mirror.yml` | GitHub App (native) |
-| **Config SSH VPS** | Secrets → bash | Variable `File` | SSH Keys UI | Service Connection UI |
-| **Problèmes critiques rencontrés** | 2 | 3 | 5 | 1 |
-| **Temps de mise en place estimé** | — | — | — | — |
+> **Méthodologie** : Temps estimés à partir de l'expérience réelle du projet DKPT,
+> en incluant la recherche de documentation, le débogage et la configuration des secrets.
+> Les durées reflètent un profil développeur familier avec Docker et CI/CD en général,
+> mais découvrant chaque plateforme pour la première fois.
+
+#### Temps de mise en place par phase
+
+| Étape | GitHub | GitLab | Bitbucket | Azure | Commentaire |
+|-------|:------:|:------:|:---------:|:-----:|-------------|
+| **Setup initial** (connexion + secrets UI) | ~1h | ~2h | ~1h30 | ~2h30 | Azure nécessite création d'une organisation + project + service connections manuelles |
+| **Enregistrement runner self-hosted** | ~20min | ~30min | ~30min | ~1h | Azure : création agent pool + enregistrement via PAT dans l'UI DevOps |
+| **Debug problèmes critiques** | ~1h | ~5h | ~8h | ~1h | Bitbucket : 5 blocages majeurs (CRLF, SSH, DinD, `<<:` YAML, platform selector bash) |
+| **Total estimé (mise en prod)** | **~2h20** | **~7h30** | **~10h** | **~4h30** | GitHub le plus rapide (natif), Bitbucket le plus laborieux |
+
+#### Caractéristiques de mise en place
+
+| Critère | GitHub | GitLab | Bitbucket | Azure | Commentaire |
+|---------|:------:|:------:|:---------:|:-----:|-------------|
+| **Connexion repo** | Native | Via `mirror.yml` | Via `mirror.yml` | GitHub App (native) | GitLab et Bitbucket nécessitent un pipeline de miroir supplémentaire actif |
+| **Enregistrement pipeline UI** | ❌ Auto | ❌ Auto | ❌ Auto | ✅ Manuel (×4) | Azure requiert l'enregistrement explicite de chaque pipeline dans l'UI |
+| **Mécanisme SSH VPS** | Secret → bash | Variable type `File` | SSH Keys natif (UI) | Service Connection | Bitbucket est le plus ergonomique ; GitHub requiert un script bash de reconstruction |
+| **Courbe d'apprentissage** | Faible | Modérée | Modérée | Élevée | Azure introduit des concepts propres : stages, pools, service connections, variable groups |
+| **Qualité documentation** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | Bitbucket : lacunes sur self-hosted avancé et ancres YAML complexes |
+| **Problèmes critiques rencontrés** | 2 | 3 | 5 | 1 | Voir section 5.1 pour le détail de chaque blocage |
+
+> **Observation** : L'effort de mise en place est fortement corrélé au nombre de concepts
+> propres à chaque plateforme. GitHub Actions, en étant natif au dépôt source, évite
+> toutes les frictions de connexion. Azure DevOps, malgré une connexion native via
+> GitHub App, introduit le plus de concepts à maîtriser (agent pools, service connections,
+> variable groups, enregistrement manuel des pipelines). Bitbucket cumule les deux
+> difficultés : connexion par miroir + contraintes YAML propres à sa syntaxe.
 
 ---
 
