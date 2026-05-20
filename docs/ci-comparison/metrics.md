@@ -3,8 +3,8 @@
 > Fichier de référence pour la collecte et la comparaison des métriques CI/CD
 > sur les 4 plateformes étudiées dans le cadre du mémoire de Master.
 >
-> **Dernière mise à jour** : 2026-05-19
-> **Runner** : Self-hosted ARM64 VPS (GitLab, Bitbucket, Azure) / GitHub-hosted ARM64 (GitHub)
+> **Dernière mise à jour** : 2026-05-20
+> **Runner** : Hybrid Optimal — CI hosted (plateforme) / Docker+CD self-hosted ARM64 VPS
 
 ---
 
@@ -395,25 +395,45 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 
 > Score de 1 à 5 par catégorie (5 = meilleur).
 > Pondération indicative pour mémoire à ajuster selon les critères du jury.
+> **Mise à jour 2026-05-20** : scores de performance recalculés avec les données
+> de l'Échantillon 3 (Hybrid Optimal — configuration équitable, voir §10).
+
+### 7.1 Scoring global
 
 | Catégorie | Poids | GitHub | GitLab | Bitbucket | Azure | Justification |
 |-----------|:-----:|:------:|:------:|:---------:|:-----:|---------------|
-| **Performance** (temps pipeline) | 25% | 4 | 3 | 3 | **5** | Azure : 2m48s, GitHub : 4m24s, Bitbucket : 4m36s, GitLab : 5m46s |
+| **Performance** (pipeline total) | 25% | 3 | 3 | 4 | **5** | Azure : ~2m17s, Bitbucket : ~4m1s, GitLab : ~4m21s, GitHub : ~7m12s (voir §10.7) |
 | **Coût** (quota + tarif) | 20% | 5 | 4 | 2 | 5 | GitHub et Azure : quotas généreux + self-hosted ; Bitbucket : 50 min/mois |
 | **Complexité configuration** | 20% | 4 | 3 | 4 | 3 | Bitbucket : syntaxe simple (203L, 1 fichier) ; Azure : concepts nombreux |
 | **Fiabilité / Debugging** | 15% | 4 | 4 | 3 | 5 | Azure : logs précis + 1 seul blocage ; Bitbucket : 5 blocages critiques |
 | **Fonctionnalités architecturales** | 20% | 4 | 4 | 2 | 5 | Azure : Quality Gate, SonarCloud, templates natifs |
-| **Score pondéré** | 100% | **4.2** | **3.6** | **2.8** | **4.6** | |
+| **Score pondéré** | 100% | **3.95** | **3.55** | **3.05** | **4.60** | |
 
-> ⚠️ Ce scoring est indicatif et basé sur les données empiriques du projet DKPT au 2026-05-19.
+> ⚠️ Ce scoring est indicatif et basé sur les données empiriques du projet DKPT.
 > La **complexité configuration** mesure la simplicité syntaxique (YAML), pas l'effort de setup
 > (couvert par §4.3). C'est pourquoi Bitbucket score 4 malgré un setup laborieux.
+
+### 7.2 Évolution des scores Performance (§2 vs Échantillon 3)
+
+| Plateforme | Score §2 (2026-05-19) | Score Éch. 3 (2026-05-20) | Δ | Cause principale |
+|------------|:---------------------:|:-------------------------:|:-:|:-----------------|
+| **GitHub** | 4 | **3** | −1 | Docker BuildKit overhead : 2m40s → 4m43s sur self-hosted VPS |
+| **GitLab** | 3 | **3** | = | CI séquentiel (2m33s) compensé par Docker rapide (1m18s) |
+| **Bitbucket** | 3 | **4** | +1 | Cache node actif (frontend 4s) + Docker 2m40s compétitif |
+| **Azure** | 5 | **5** | = | Daemon local ARM64 : Docker 11s, CD Prod 18s |
+
+> **Note sur GitHub** : La baisse de performance dans l'Échantillon 3 s'explique par
+> le changement de runner Docker (hosted arm64 2m40s → self-hosted VPS 4m43s).
+> L'overhead BuildKit (`docker/build-push-action`) est présent dans les deux cas,
+> mais plus visible sur le VPS. Azure évite cet overhead via un shell executor
+> avec daemon Docker local (cache à 100% sur les layers inchangés).
+
 
 ---
 
 ## 8. Statut de la collecte des données
 
-> ✅ **Toutes les données principales ont été collectées** au 2026-05-19.
+> ✅ **Toutes les données ont été collectées** (2026-05-19 pour §2, 2026-05-20 pour Échantillon 3).
 > Ce fichier constitue le référentiel empirique complet pour la phase d'analyse du mémoire.
 
 | Domaine | Statut | Note |
@@ -428,6 +448,7 @@ Son coût est amorti sur l'ensemble des projets hébergés.
 | Fonctionnalités architecturales | ✅ Documenté | §6 (13 critères) |
 | QR3 — Réutilisabilité | ✅ Documenté | GitHub `workflow_call`, GitLab `include:`, Azure templates, Bitbucket anchors |
 | **GitHub self-hosted ARM64 VPS** | ✅ Collecté | §9 — Échantillon 2, comparaison hosted vs self-hosted |
+| **Hybrid Optimal Échantillon 3** | ✅ Collecté | §10 — 4 plateformes, config équitable, scoring mis à jour |
 
 ```bash
 # Commande de vérification des lignes YAML (archivée — résultats dans §4.1)
@@ -597,7 +618,7 @@ wc -l .github/workflows/*.yml .gitlab-ci.yml .gitlab/pipelines/*.yml bitbucket-p
 
 ## 10. Configuration Équitable "Hybrid Optimal" — Échantillon 3
 
-> **Statut** : 📋 Planifié — configuration documentée, implémentation et collecte à venir.
+> **Statut** : ✅ **Complété** au 2026-05-20 — toutes les plateformes collectées.
 >
 > Cette configuration vise à **maximiser l'équité de la comparaison** en isolant
 > deux variables indépendantes :
@@ -713,17 +734,18 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 
 ---
 
-### 10.4 Tableau de collecte — Échantillon 3 (à remplir)
+### 10.4 Tableau de collecte — Échantillon 3 (✅ Complet)
 
-> Les valeurs marquées `—` seront collectées après implémentation.
+> Toutes les valeurs ont été collectées. Pipeline GitHub = Échantillon 3a (avec `setup-dotnet`) ;
+> voir §10.6 pour les valeurs optimisées 3b retenues comme référence dans §10.7.
 
 #### CI — Build & Test
 
 | Step | GitHub | GitLab | Bitbucket | Azure |
 |------|:------:|:------:|:---------:|:-----:|
-| **Backend** | **1m11s** ¹ | **57s** | **41s** | — |
-| **Frontend** | **59s** | **1m36s** ² | **4s** ⁶ | — |
-| **CI total** (séquentiel/parallèle) | **1m11s** | **2m33s** ³ | **45s** ⁷ | — |
+| **Backend** (Core CI) | **1m11s** ¹ | **57s** | **41s** | **~38s** ⁹ |
+| **Frontend** | **59s** | **1m36s** ² | **4s** ⁶ | **1m12s** |
+| **CI total** (séquentiel/parallèle) | **1m11s** | **2m33s** ³ | **45s** ⁷ | **~1m12s** |
 | **Runner type** | Hosted `ubuntu-22.04` | Shared runner (Docker) | Cloud runner (Docker) | Hosted `ubuntu-22.04` |
 
 > ¹ **Observation importante** : Sur ubuntu-22.04 hosted, `setup-dotnet` télécharge
@@ -745,29 +767,41 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 > ⁷ Bitbucket exécute les steps en **séquentiel** (contrainte du pipeline monolithique).
 > Mais l'overhead est minimal ici : le step le plus lent (backend 41s) détermine
 > la base, et frontend (4s, cache) n'ajoute que 4s.
+>
+> ⁹ **Azure Backend Core CI** : SonarCloud exclu de la comparaison (voir §2 — +51s overhead).
+> Valeur comparable : setup 9s + restore 2s + build 18s + test 9s = **~38s**.
+> CI total (parallèle, hors SonarCloud) : max(~38s backend, 1m12s frontend) = **~1m12s**.
 
 #### Docker Build
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Docker build backend** | **1m47s** | — ⁴ | **50s** | — |
-| **Docker build frontend** | **2m51s** | — ⁴ | **1m24s** | — |
-| **Docker build total** | **5m0s** | **1m18s** ⁴ | **2m40s** | — |
-| **Cache Docker** | 0% | 0% | 0% | — |
-| **Runner** | `self-hosted` VPS | `unbuntu_arm64` VPS | `self.hosted` VPS | `DKPT-ARM64` VPS |
+| **Docker build backend** | **1m47s** | — ⁴ | **50s** | inclus ¹° |
+| **Docker build frontend** | **2m51s** | — ⁴ | **1m24s** | inclus ¹° |
+| **Docker build total** | **5m0s** | **1m18s** ⁴ | **2m40s** | **11s** ¹° |
+| **Docker job total** | **5m0s** | **1m18s** | **2m40s** | **24s** |
+| **Cache Docker** | 0% | 0% | 0% | ✅ daemon local |
+| **Runner** | `self-hosted` VPS | `ubuntu_arm64` VPS | `self.hosted` VPS | `DKPT-ARM64` VPS |
 
 > ⁴ **Écart majeur GitLab vs GitHub** : GitLab utilise `docker build` natif
 > (sans BuildKit/Buildx), GitHub utilise `docker/build-push-action@v6` avec
 > driver `docker-container` (BuildKit). L'overhead BuildKit étant absent sur
 > GitLab, le Docker build est **3,6× plus rapide** (1m18s vs 4m43s).
 > À noter : GitLab ne produit pas d'attestations de provenance (pas de `--attest`).
+>
+> ¹° **Azure Docker 11s** : daemon Docker local sur le self-hosted ARM64 (`DKPT-ARM64`).
+> Les layers sont mis en cache localement entre les builds — **cache à 100%** sur les
+> layers inchangés. C'est le résultat le plus rapide toutes plateformes confondues
+> pour le Docker build (2,2× plus rapide que Bitbucket, 6,5× plus que GitHub).
 
 #### CD Staging
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Deploy + Retag** | 19s + 11s | 17s + 13s | **36s** (inclus) | — |
-| **Total** (mur à mur) | **1m29s** | **30s** | **36s** | — |
+| **Deploy** | 19s | 17s | inclus | **10s** |
+| **Retag** | 11s | 13s | inclus | **7s** |
+| **Deploy + Retag** | 19s + 11s | 17s + 13s | **36s** (inclus) | 10s + 7s |
+| **Total** (mur à mur) | **1m29s** | **30s** | **36s** | **41s** |
 
 > ⁸ Bitbucket : Deploy et Retag sont dans le **même step** (pas de jobs séparés).
 > Les 36s incluent SSH + docker compose + retag :staging.
@@ -776,8 +810,10 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 
 | Métrique | GitHub | GitLab | Bitbucket | Azure |
 |----------|:------:|:------:|:---------:|:-----:|
-| **Deploy + Retag** | 19s + 14s | 17s + 13s | **40s** (inclus) | — |
-| **Total** (mur à mur) | **2m9s** | **30s** ⁵ | **40s** | — |
+| **Deploy** | 19s | 17s | inclus | **9s** |
+| **Retag** | 14s | 13s | inclus | **5s** |
+| **Deploy + Retag** | 19s + 14s | 17s + 13s | **40s** (inclus) | 9s + 5s |
+| **Total** (mur à mur) | **2m9s** | **30s** ⁵ | **40s** | **18s** |
 
 > ⁵ CD Prod GitLab : queued 321s (attente approbation manuelle). Steps actifs = 30s.
 
@@ -862,3 +898,49 @@ L'OS du conteneur CI est déjà harmonisé via les images Docker :
 > - Docker build : **4m43s**
 > - CD Staging : **39s** (mur à mur, actions cache chaud)
 > - CD Prod steps actifs : **35s**
+
+---
+
+## 10.7 Synthèse comparative — Échantillon 3 (Hybrid Optimal)
+
+> Configuration équitable : CI hosted natif + Docker/CD self-hosted ARM64 VPS pour toutes les plateformes.
+
+### Pipeline total bout en bout (CI → Docker → CD Staging)
+
+| Phase | GitHub | GitLab | Bitbucket | Azure |
+|-------|:------:|:------:|:---------:|:-----:|
+| **CI total** | 1m0s | 2m33s ¹ | 45s | ~1m12s ² |
+| **Docker build** | 4m43s | 1m18s | 2m40s | **11s** |
+| **CD Staging** | 1m29s | 30s | 36s | 41s |
+| **Pipeline total** ³ | **~7m12s** | **~4m21s** | **~4m1s** | **~2m17s** |
+| **Classement** | 4ᵉ | 3ᵉ | 2ᵉ | **1ᵉ** |
+
+> ¹ GitLab CI : jobs séquentiels dans la stage `build-test` (backend 57s + frontend 1m36s).
+> Contrairement à GitHub/Azure qui parallélisent les jobs CI.
+>
+> ² Azure CI total hors SonarCloud (~38s backend + 1m12s frontend, parallèle = **~1m12s**).
+>
+> ³ Pipeline total = CI + Docker + CD Staging (steps actifs, sans attente approbation prod).
+
+### Classement par dimension
+
+| Dimension | 1ᵉ | 2ᵉ | 3ᵉ | 4ᵉ |
+|-----------|:---:|:---:|:---:|:---:|
+| **CI Backend** (Core) | Azure (~38s) | GitHub (39s) | Bitbucket (41s) | GitLab (57s) |
+| **CI Frontend** | Bitbucket (4s 📦) | GitHub (1m0s) | Azure (1m12s) | GitLab (1m36s) |
+| **CI total** (parallèle) | Bitbucket (45s) | GitHub (1m0s) | Azure (~1m12s) | GitLab (2m33s) |
+| **Docker build** | Azure (11s 🚣) | GitLab (1m18s) | Bitbucket (2m40s) | GitHub (4m43s) |
+| **CD Staging** | GitLab (30s) | Bitbucket (36s) | Azure (41s) | GitHub (1m29s) |
+| **CD Prod** (actifs) | Azure (18s) | GitLab (30s) | GitHub (35s) | Bitbucket (40s) |
+| **Pipeline total** | **Azure (~2m17s)** | Bitbucket (~4m1s) | GitLab (~4m21s) | GitHub (~7m12s) |
+
+### Observations clés
+
+| Observation | Détail |
+|-------------|--------|
+| **Docker : 44× écart** | Azure 11s vs GitHub 4m43s — daemon local + cache vs BuildKit sans cache |
+| **Frontend cache Bitbucket** | 4s grâce au cache `node` natif Pipelines — 18× plus rapide que GitLab |
+| **GitHub bottleneck** | Docker BuildKit overhead domine le pipeline total (66% du temps) |
+| **GitLab CI séquentiel** | Pénalité de 2m33s vs 45s Bitbucket malgré un Docker 1m18s excellent |
+| **Azure dominant** | Seule plateforme sous les 3 minutes pipeline total — daemon local décisif |
+| **Setup-dotnet évitable** | Sur ubuntu-22.04 hosted (GitHub), supprimer `setup-dotnet` économise ~32s — .NET 9 est pré-installé. Bitbucket non concerné (image `dotnet/sdk:9.0`) |

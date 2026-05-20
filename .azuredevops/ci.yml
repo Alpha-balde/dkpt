@@ -30,7 +30,7 @@ variables:
   - name: dotnetVersion
     value: '9.0.x'
   - name: nodeVersion
-    value: '20'
+    value: '22'  # Node 22 — cohérent avec GitLab (node:22-alpine), Bitbucket (node:22-alpine), GitHub (NODE_VERSION: 22)
   - name: dockerBackendImage
     value: '$(DOCKERHUB_USERNAME)/dkpt-backend'
   - name: dockerFrontendImage
