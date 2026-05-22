@@ -47,41 +47,11 @@ stages:
     jobs:
       # ---- Backend (.NET 9) ----
       - job: BackendTest
-        displayName: 'Backend — Build, Test & SonarCloud'
+        displayName: 'Backend — Build & Test'
         steps:
           - checkout: self
-            fetchDepth: 0  # NE PAS LIMITER la profondeur de clonage
-
-          - script: mkdir -p $(Pipeline.Workspace)/.sonar/cache
-            displayName: 'Create SonarCloud cache directory'
-
-          - task: Cache@2
-            displayName: 'Cache SonarCloud'
-            inputs:
-              key: 'sonar | "$(Agent.OS)"'
-              path: '$(Pipeline.Workspace)/.sonar/cache'
-
-          - task: SonarCloudPrepare@3
-            displayName: 'SonarCloud — Prepare'
-            inputs:
-              SonarCloud: 'sonarcloud-connection'
-              organization: '$(SONAR_ORGANIZATION)'
-              scannerMode: 'dotnet'
-              projectKey: '$(SONAR_PROJECT_KEY)'
-              projectName: 'DKPT'
-              extraProperties: |
-                sonar.userHome=$(Pipeline.Workspace)/.sonar
 
           - template: templates/build-dotnet.yml
-
-          - task: SonarCloudAnalyze@3
-            displayName: 'SonarCloud — Analyze'
-
-          - task: SonarCloudPublish@3
-            displayName: 'SonarCloud — Publish Quality Gate'
-            inputs:
-              pollingTimeoutSec: '300'
-            continueOnError: true  # 403 en cours de résolution — résultats visibles sur sonarcloud.io
 
       # ---- Frontend (Nuxt 4) ----
       - job: FrontendBuild
