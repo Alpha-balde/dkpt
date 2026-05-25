@@ -9,8 +9,7 @@ Ce document recense les tâches que l'administrateur système doit effectuer **m
 ## 1. Transfert des Données de Seed Sensibles (PII)
 
 Les fichiers d'initialisation de la base de données (`members_rows.sql` et `payments_rows.sql`) contiennent des données réelles et confidentielles de l'association.
-> [!CAUTION]
-> **Ne jamais commiter ces fichiers dans le dépôt Git.** Les pipelines CI/CD n'y ayant pas accès, il faut les copier manuellement sur le serveur cible (Staging ou Production).
+
 
 ### Étape 1 : Copier les fichiers sur le VPS
 Depuis votre machine locale, uploadez le dossier `dkpt_sql` vers votre dossier personnel sur le VPS via SCP :

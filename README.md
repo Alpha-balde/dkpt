@@ -143,7 +143,6 @@ GitHub (source de vérité)
 | `VPS_STAGING_USER` | Utilisateur SSH staging |
 | `VPS_STAGING_SSH_KEY` | Clé privée SSH staging |
 
-> 📊 Documentation comparative détaillée : voir `docs/ci-comparison/`
 
 ### Tests unitaires
 
@@ -311,15 +310,3 @@ Dkpt/
 | Supprimer (tout) | ✅ | ❌ | ❌ | ❌ |
 | Gérer utilisateurs | ✅ | ❌ | ❌ | ❌ |
 | Paramètres | ✅ | ❌ | ❌ | ❌ |
-
-## Avancement des phases
-
-| Phase | Statut | Description |
-|-------|--------|-------------|
-| 1 — Backend API | ✅ Terminé | .NET 9, Clean Architecture, JWT, 5 tables, Swagger |
-| 2 — Frontend | ✅ Terminé | Nuxt 4, 10 pages, auth, layout responsive |
-| 3 — Infrastructure | ✅ Terminé | Docker Compose, Dockerfiles multi-stage, Caddy, seed auto |
-| 4 — CI/CD (GitHub Actions) | ✅ Terminé | CI + CD staging/prod + PR check + variantes + mirroring |
-| 4 — CI/CD (GitLab CI) | 📝 Configuré | Pipelines parent-child créés, à tester après mirroring |
-| 4 — CI/CD (Azure DevOps) | 📝 Configuré | Pipelines + templates créés, enregistrement UI à faire |
-| 4 — CI/CD (Bitbucket) | 📝 Configuré | Fichier pipeline créé, à tester après mirroring |
