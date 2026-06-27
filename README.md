@@ -93,7 +93,7 @@ docker compose down -v          # Reset complet (supprime la base de données)
 ## Comptes de test
 
 | Email | Rôle |
-|-------|-------------|------|
+|-------| :---:|
 | `admin@dkpt.com` | Admin |
 | `sg@dkpt.com` |  Secrétaire |
 | `tr@dkpt.com` |  Trésorier |
