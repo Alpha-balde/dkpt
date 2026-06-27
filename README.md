@@ -92,12 +92,12 @@ docker compose down -v          # Reset complet (supprime la base de données)
 
 ## Comptes de test
 
-| Email | Mot de passe | Rôle |
+| Email | Rôle |
 |-------|-------------|------|
-| `admin@dkpt.com` | `Dkpt@2026` | Admin |
-| `sg@dkpt.com` | `Dkpt@2026` | Secrétaire |
-| `tr@dkpt.com` | `Dkpt@2026` | Trésorier |
-| `membre@dkpt.com` | `Dkpt@2026` | Lecteur |
+| `admin@dkpt.com` | Admin |
+| `sg@dkpt.com` |  Secrétaire |
+| `tr@dkpt.com` |  Trésorier |
+| `membre@dkpt.com` |  Lecteur |
 
 > ⚠️ Ces comptes doivent être créés via `/api/Auth/register` avec le paramètre `role`.
 > Le seed automatique importe les données SQL mais ne crée pas les utilisateurs.
