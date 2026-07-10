@@ -1,0 +1,195 @@
+# ============================================
+# DKPT — Azure DevOps : Expérience QEMU ARM64
+# ============================================
+# Test exploratoire : build Docker linux/arm64 via QEMU
+# sur runner Microsoft-hosted Ubuntu x86_64.
+#
+# OBJECTIF : Documenter la faisabilité et la durée d'un
+# build ARM64 émulé pour justifier le choix méthodologique
+# du runner self-hosted ARM64 dans le protocole comparatif.
+#
+# IMPORTANT :
+# - Pipeline ISOLÉ — ne modifie aucun pipeline principal
+# - Build-only — aucun push vers Docker Hub
+# - Branche dédiée : experiment-azure-qemu-arm64
+# - Ce pipeline doit être enregistré manuellement dans l'UI Azure DevOps
+# ============================================
+
+trigger:
+  branches:
+    include:
+      - experiment-azure-qemu-arm64
+
+pool:
+  vmImage: ubuntu-22.04  # Microsoft-hosted x86_64
+
+variables:
+  backendImage: 'dkpt-backend-qemu-test'
+  frontendImage: 'dkpt-frontend-qemu-test'
+
+jobs:
+  # ============================================
+  # Job 1 — Backend (.NET 9) via QEMU ARM64
+  # ============================================
+  - job: BackendQEMU
+    displayName: 'Backend Docker ARM64 via QEMU'
+    timeoutInMinutes: 60
+    steps:
+      - checkout: self
+
+      - script: |
+          echo "============================================"
+          echo "ÉTAPE 1 — Informations système"
+          echo "============================================"
+          echo "Runner : $(uname -m)"
+          echo "OS     : $(lsb_release -ds 2>/dev/null || cat /etc/os-release | head -1)"
+          echo "CPU    : $(nproc) cores"
+          echo "RAM    : $(free -h | awk '/Mem:/ {print $2}')"
+          echo "Docker : $(docker --version)"
+          echo "Date   : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "Commit : $(Build.SourceVersion)"
+          echo "============================================"
+        displayName: 'Informations système'
+
+      - script: |
+          echo "============================================"
+          echo "ÉTAPE 2 — Installation QEMU + Buildx"
+          echo "============================================"
+          
+          # Installer QEMU pour émulation multi-architecture
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          
+          # Créer un builder Buildx avec support multi-plateforme
+          docker buildx create --name qemu-builder --driver docker-container --use
+          docker buildx inspect --bootstrap
+          
+          echo "============================================"
+          echo "Plateformes supportées :"
+          docker buildx inspect --bootstrap | grep -i platforms
+          echo "============================================"
+        displayName: 'Setup QEMU + Buildx'
+
+      - script: |
+          echo "============================================"
+          echo "ÉTAPE 3 — Build Backend ARM64 via QEMU"
+          echo "============================================"
+          echo "Image : $(backendImage):qemu-arm64-test"
+          echo "Dockerfile : ./backend/Dockerfile"
+          echo "Platform : linux/arm64"
+          echo "Début : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "============================================"
+          
+          START_TIME=$(date +%s)
+          
+          # Build ARM64 via QEMU — build-only, pas de push
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag $(backendImage):qemu-arm64-test \
+            --file ./backend/Dockerfile \
+            --load \
+            ./backend \
+            2>&1 | tee /tmp/backend-build.log
+          
+          BUILD_EXIT=$?
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          
+          echo "============================================"
+          echo "RÉSULTAT BUILD BACKEND"
+          echo "============================================"
+          echo "Exit code : ${BUILD_EXIT}"
+          echo "Durée     : ${DURATION}s ($(( DURATION / 60 ))m$(( DURATION % 60 ))s)"
+          echo "Fin       : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "============================================"
+          
+          # Sauvegarder les métriques pour le rapport
+          echo "##vso[task.setvariable variable=backendDuration]${DURATION}"
+          echo "##vso[task.setvariable variable=backendExitCode]${BUILD_EXIT}"
+          
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "##vso[task.logissue type=warning]Build backend ARM64 échoué après ${DURATION}s"
+            echo "--- Dernières lignes du log ---"
+            tail -50 /tmp/backend-build.log
+          fi
+          
+          exit $BUILD_EXIT
+        displayName: 'Build Backend ARM64 (QEMU)'
+
+  # ============================================
+  # Job 2 — Frontend (Nuxt 4) via QEMU ARM64
+  # ============================================
+  - job: FrontendQEMU
+    displayName: 'Frontend Docker ARM64 via QEMU'
+    timeoutInMinutes: 60
+    steps:
+      - checkout: self
+
+      - script: |
+          echo "============================================"
+          echo "ÉTAPE 1 — Informations système"
+          echo "============================================"
+          echo "Runner : $(uname -m)"
+          echo "OS     : $(lsb_release -ds 2>/dev/null || cat /etc/os-release | head -1)"
+          echo "CPU    : $(nproc) cores"
+          echo "RAM    : $(free -h | awk '/Mem:/ {print $2}')"
+          echo "Docker : $(docker --version)"
+          echo "Date   : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "============================================"
+        displayName: 'Informations système'
+
+      - script: |
+          echo "============================================"
+          echo "ÉTAPE 2 — Installation QEMU + Buildx"
+          echo "============================================"
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker buildx create --name qemu-builder --driver docker-container --use
+          docker buildx inspect --bootstrap
+          echo "Plateformes supportées :"
+          docker buildx inspect --bootstrap | grep -i platforms
+          echo "============================================"
+        displayName: 'Setup QEMU + Buildx'
+
+      - script: |
+          echo "============================================"
+          echo "ÉTAPE 3 — Build Frontend ARM64 via QEMU"
+          echo "============================================"
+          echo "Image : $(frontendImage):qemu-arm64-test"
+          echo "Dockerfile : ./frontend/Dockerfile"
+          echo "Platform : linux/arm64"
+          echo "Début : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "============================================"
+          
+          START_TIME=$(date +%s)
+          
+          # Build ARM64 via QEMU — build-only, pas de push
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag $(frontendImage):qemu-arm64-test \
+            --file ./frontend/Dockerfile \
+            --load \
+            ./frontend \
+            2>&1 | tee /tmp/frontend-build.log
+          
+          BUILD_EXIT=$?
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - START_TIME))
+          
+          echo "============================================"
+          echo "RÉSULTAT BUILD FRONTEND"
+          echo "============================================"
+          echo "Exit code : ${BUILD_EXIT}"
+          echo "Durée     : ${DURATION}s ($(( DURATION / 60 ))m$(( DURATION % 60 ))s)"
+          echo "Fin       : $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "============================================"
+          
+          echo "##vso[task.setvariable variable=frontendDuration]${DURATION}"
+          echo "##vso[task.setvariable variable=frontendExitCode]${BUILD_EXIT}"
+          
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "##vso[task.logissue type=warning]Build frontend ARM64 échoué après ${DURATION}s"
+            echo "--- Dernières lignes du log ---"
+            tail -50 /tmp/frontend-build.log
+          fi
+          
+          exit $BUILD_EXIT
+        displayName: 'Build Frontend ARM64 (QEMU)'
