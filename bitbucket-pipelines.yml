@@ -27,7 +27,7 @@
 # Comparaison : voir docs/ci-comparison/bitbucket.md
 # ============================================
 
-image: atlassian/default-image:4
+image: atlassian/default-image:5
 
 definitions:
   # ============================================
@@ -67,7 +67,7 @@ definitions:
     # BUILD ONCE — image construite une seule fois, réutilisée pour staging + prod
     - step: &docker-build-sha
         name: 'Docker — Build & Push :sha-{8chars}'
-        image: atlassian/default-image:4
+        image: atlassian/default-image:5
         runs-on:
           - self.hosted
           - linux
