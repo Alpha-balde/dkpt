@@ -19,3 +19,4 @@ frontend/.output/
 # Agents IA
 .agents/
 docs/ci-comparison/
+docs/metrics-v2.md
