@@ -43,7 +43,7 @@ stages:
   - stage: BuildTest
     displayName: 'Build & Test'
     pool:
-      vmImage: ubuntu-22.04  # Fixé pour reproductibilité (ubuntu-latest peut basculer 22.04→24.04)
+      name: Default  # Self-hosted ARM64 VPS — Échantillon B (Full Self-Hosted)
     jobs:
       # ---- Backend (.NET 9) ----
       - job: BackendTest
