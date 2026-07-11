@@ -68,4 +68,4 @@ cd-prod:
     strategy: depend
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_COMMIT_MESSAGE =~ /\[ci:gitlab\]/'
-  needs: [ci]
+  needs: [cd-staging]
