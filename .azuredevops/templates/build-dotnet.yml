@@ -55,6 +55,7 @@ steps:
 
   - task: PublishCodeCoverageResults@2
     displayName: 'Publish Code Coverage'
+    continueOnError: true  # CoveragePublisher binaire x64-only — échoue sur ARM64 self-hosted
     inputs:
       summaryFileLocation: '**/coverage.cobertura.xml'
     condition: always()
