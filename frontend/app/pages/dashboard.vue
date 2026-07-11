@@ -196,7 +196,7 @@ const participationRate = computed(() => {
           Tableau de bord
         </h1>
         <p class="text-sm text-gray-500 mt-1">
-          Vue d'ensemble des membres, cotisations et paiements. Metric from github action by  <b>self-hosted runner. Run 2</b>
+          Vue d'ensemble des membres, cotisations et paiements. <b>Échantillon A — GitHub Actions</b>
         </p>
       </div>
       <div class="w-32">
