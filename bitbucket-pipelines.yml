@@ -63,6 +63,7 @@ definitions:
         caches:
           - node
         script:
+          - apk add --no-cache git
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "⏩ [ci:bitbucket] absent — step ignoré"; exit 0; }'
           - cd frontend
           - npm ci
