@@ -196,7 +196,7 @@ const participationRate = computed(() => {
           Tableau de bord
         </h1>
         <p class="text-sm text-gray-500 mt-1">
-          Vue d'ensemble des membres, cotisations et paiements. <b>Échantillon A — Azure DevOps R1</b>
+          Vue d'ensemble des membres, cotisations et paiements. <b>Échantillon A — Azure DevOps R2</b>
         </p>
       </div>
       <div class="w-32">
