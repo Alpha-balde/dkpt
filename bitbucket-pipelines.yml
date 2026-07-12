@@ -38,10 +38,7 @@ definitions:
     - step: &build-test-backend
         name: 'Backend — Build & Test'
         image: mcr.microsoft.com/dotnet/sdk:9.0
-        runs-on:
-          - self.hosted
-          - linux
-        # Self-hosted ARM64 VPS — Échantillon B (Full Self-Hosted)
+        # Pas de runs-on → Bitbucket cloud runner (hosted) — Échantillon A (re-collecte)
         caches:
           - dotnetcore
         script:
@@ -56,10 +53,7 @@ definitions:
     - step: &build-frontend
         name: 'Frontend — Lint & Build'
         image: node:22-alpine
-        runs-on:
-          - self.hosted
-          - linux
-        # Self-hosted ARM64 VPS — Échantillon B (Full Self-Hosted)
+        # Pas de runs-on → Bitbucket cloud runner (hosted) — Échantillon A (re-collecte)
         caches:
           - node
         script:
