@@ -26,8 +26,7 @@ variables:
 # ============================================
 backend-build-test:
   stage: build-test
-  tags: [unbuntu_arm64]
-  # Self-hosted ARM64 VPS — Échantillon B (Full Self-Hosted)
+  # Pas de tags → GitLab Shared Runner SaaS — Échantillon A (CI Hosted)
   image: mcr.microsoft.com/dotnet/sdk:9.0
   script:
     - cd backend
@@ -45,8 +44,7 @@ backend-build-test:
 # ============================================
 frontend-lint-build:
   stage: build-test
-  tags: [unbuntu_arm64]
-  # Self-hosted ARM64 VPS — Échantillon B (Full Self-Hosted)
+  # Pas de tags → GitLab Shared Runner SaaS — Échantillon A (CI Hosted)
   image: node:22-alpine
   script:
     - cd frontend

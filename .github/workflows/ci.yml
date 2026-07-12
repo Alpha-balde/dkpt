@@ -50,7 +50,7 @@ jobs:
   # ============================================
   backend-build-test:
     name: Backend — Build & Test
-    runs-on: self-hosted
+    runs-on: ubuntu-22.04
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]')
 
     steps:
@@ -78,7 +78,7 @@ jobs:
   # ============================================
   frontend-build:
     name: Frontend — Lint & Build
-    runs-on: self-hosted
+    runs-on: ubuntu-22.04
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci:github]')
 
     steps:
