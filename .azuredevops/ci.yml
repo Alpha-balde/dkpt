@@ -7,7 +7,7 @@
 #
 # Runner CI : Hosted ubuntu-22.04 (fixé pour reproductibilité)
 # Runner Docker/CD : Default pool (DKPT-ARM64, self-hosted VPS)
-# Configuration équitable Hybrid Optimal (Échantillon 3)
+# Configuration équitable Hybrid Optimal (Échantillon A)
 #
 # Note : Ce fichier doit être enregistré manuellement dans l'UI
 # Azure DevOps comme un pipeline distinct.
