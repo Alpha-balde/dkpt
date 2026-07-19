@@ -80,6 +80,8 @@ services:
       - "80:80"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - frontend
       - backend

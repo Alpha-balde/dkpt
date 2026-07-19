@@ -27,3 +27,7 @@
 		reverse_proxy frontend:3000
 	}
 }
+
+staging.solokouretransfert.soguimod.com {
+	reverse_proxy host.docker.internal:8081
+}

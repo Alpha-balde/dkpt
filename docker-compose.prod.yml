@@ -80,6 +80,8 @@ services:
       - caddy-config:/config  # Configuration Caddy
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - frontend
       - backend
