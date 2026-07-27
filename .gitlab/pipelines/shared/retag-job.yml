@@ -1,0 +1,30 @@
+# ============================================
+# DKPT — GitLab CI : Job partagé de retag Docker
+# ============================================
+# Job caché réutilisable pour promouvoir une image
+# :sha-{CI_COMMIT_SHORT_SHA} vers un tag cible (staging, latest).
+#
+# Utilisé via `extends: .retag-job` dans cd-staging.yml et cd-prod.yml.
+# Le tag cible est passé par la variable `TARGET_TAG`.
+# ============================================
+
+.retag-job:
+  tags:
+    - unbuntu_arm64
+  image: docker:27
+  variables:
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    DOCKER_TLS_CERTDIR: ""
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  script:
+    - echo "Retagging sha-${CI_COMMIT_SHORT_SHA} to ${TARGET_TAG}"
+    # Backend
+    - docker pull $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
+    - docker tag $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} $DOCKER_BACKEND_IMAGE:${TARGET_TAG}
+    - docker push $DOCKER_BACKEND_IMAGE:${TARGET_TAG}
+    # Frontend
+    - docker pull $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
+    - docker tag $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} $DOCKER_FRONTEND_IMAGE:${TARGET_TAG}
+    - docker push $DOCKER_FRONTEND_IMAGE:${TARGET_TAG}
+    - echo "sha-${CI_COMMIT_SHORT_SHA} promoted to :${TARGET_TAG}"
