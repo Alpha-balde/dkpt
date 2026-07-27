@@ -10,6 +10,9 @@
 # Équivalent de : .github/workflows/cd-staging.yml
 # ============================================
 
+include:
+  - local: /.gitlab/pipelines/shared/retag-job.yml
+
 stages:
   - deploy
   - retag
@@ -55,23 +58,7 @@ deploy-staging:
 # Job 2 — Retag :staging (BODM — promote sha image)
 # ============================================
 retag-staging:
+  extends: .retag-job
   stage: retag
-  tags:
-    - unbuntu_arm64
-  image: docker:27
   variables:
-    DOCKER_HOST: "unix:///var/run/docker.sock"
-    DOCKER_TLS_CERTDIR: ""
-  before_script:
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-  script:
-    - echo "Retagging sha-${CI_COMMIT_SHORT_SHA} to staging"
-    # Backend
-    - docker pull $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
-    - docker tag $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} $DOCKER_BACKEND_IMAGE:staging
-    - docker push $DOCKER_BACKEND_IMAGE:staging
-    # Frontend
-    - docker pull $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
-    - docker tag $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} $DOCKER_FRONTEND_IMAGE:staging
-    - docker push $DOCKER_FRONTEND_IMAGE:staging
-    - echo "sha-${CI_COMMIT_SHORT_SHA} promoted to :staging"
+    TARGET_TAG: staging
