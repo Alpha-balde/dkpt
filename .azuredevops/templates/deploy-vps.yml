@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — Azure DevOps : Template Deploy VPS
-# ============================================
 # Template réutilisable pour le déploiement sur VPS.
 # Exécuté par l'agent d'environnement directement sur le VPS
 # (pas de SSH — tout est local).
@@ -10,7 +8,6 @@
 #   - scripts/deploy.sh       → Pull images + docker compose up
 #
 # Utilisé par : cd-staging.yml, cd-prod.yml
-# ============================================
 
 parameters:
   - name: envTag
@@ -63,7 +60,6 @@ steps:
   - script: bash /opt/dkpt/scripts/deploy.sh
     displayName: 'Deploy via docker compose'
 
-  # Re-tag images with environment tag
   - task: Docker@2
     displayName: 'Login to Docker Hub'
     inputs:

@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — Azure DevOps : Pipeline CD Staging
-# ============================================
 # Deploy sur VPS staging.
 # Déclenché après succès du pipeline CI sur main.
 #
@@ -10,7 +8,6 @@
 #
 # Quality Gate (k6, ZAP, Playwright) : pipeline séparé
 #   → quality-gate-manual.yml (déclenchement manuel)
-# ============================================
 
 trigger: none
 
@@ -32,9 +29,7 @@ variables:
     value: '$(DOCKERHUB_USERNAME)/dkpt-frontend'
 
 stages:
-  # ============================================
   # Stage 1 — Deploy to Staging VPS
-  # ============================================
   - stage: DeployStaging
     displayName: 'Deploy to Staging'
     jobs:

@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — Pipeline CD Staging (GitHub Actions)
-# ============================================
 # Architecture : Build Once, Deploy Many (BODM)
 # Déclenché après le succès du CI (workflow_run sur main).
 # Jobs : deploy (pull :sha + SSH deploy) → retag :staging
@@ -8,7 +6,6 @@
 # Aucun docker build ici — l'image vient du job docker-build-sha du CI.
 # Le sha est récupéré via github.event.workflow_run.head_sha.
 #
-# ============================================
 
 name: DKPT CD — Staging
 
@@ -28,9 +25,7 @@ env:
   DOCKER_FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-frontend
 
 jobs:
-  # ============================================
   # Job 1 — Deploy to Staging VPS
-  # ============================================
   deploy:
     name: Deploy to Staging
     runs-on: self-hosted
@@ -98,9 +93,7 @@ jobs:
           key: ${{ secrets.VPS_STAGING_SSH_KEY }}
           script: bash /opt/dkpt/scripts/deploy.sh
 
-  # ============================================
   # Job 2 — Retag :staging (via reusable workflow)
-  # ============================================
   # La logique de retag est centralisée dans reusable-retag.yml
   # et appelée ici via workflow_call.
   retag:

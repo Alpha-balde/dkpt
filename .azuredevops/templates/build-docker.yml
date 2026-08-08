@@ -1,12 +1,9 @@
-# ============================================
 # DKPT — Azure DevOps : Template Build Docker
-# ============================================
 # Build & push des images Docker sur Docker Hub.
 # Exécuté sur l'agent self-hosted ARM64 (pool Default).
 # Tag : sha-{8 premiers chars du commit}
 #
 # Utilisé par : ci.yml
-# ============================================
 
 steps:
   - checkout: self

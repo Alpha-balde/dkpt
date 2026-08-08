@@ -1,9 +1,6 @@
-# ============================================
 # DKPT — Variante 2 : Single Job
-# ============================================
 # Fusionne backend et frontend dans un seul job
 # avec toutes les steps séquentielles.
-# ============================================
 
 name: "Variante 2 — Single Job"
 
@@ -15,9 +12,7 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  # ============================================
   # Job unique — Build & Test (tout en un)
-  # ============================================
   ci:
     name: "CI — Build & Test (all-in-one)"
     runs-on: ubuntu-latest

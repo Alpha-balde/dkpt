@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — Azure DevOps : Template Build .NET
-# ============================================
 # Morceau réutilisable pour build & test du backend .NET 9
 # Utilisé par : ci.yml, pr-check.yml
 #
@@ -9,7 +7,6 @@
 #
 # Cache : NuGet packages
 # (utile sur agents Microsoft-hosted, VM détruite après chaque run)
-# ============================================
 
 steps:
   - task: UseDotNet@2

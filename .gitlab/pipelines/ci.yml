@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — GitLab CI : Pipeline enfant CI
-# ============================================
 # Architecture : Build Once, Deploy Many (BODM)
 # Ce pipeline CI construit et pousse l'image Docker une seule fois
 # avec le tag :sha-{CI_COMMIT_SHORT_SHA}.
@@ -8,7 +6,6 @@
 #
 # Runner CI : GitLab shared runners (hosted) — image Docker spécifiée par job
 # Runner Docker/CD : VPS Staging ARM64 self-hosted (tag: unbuntu_arm64)
-# ============================================
 
 stages:
   - build-test
@@ -20,9 +17,7 @@ variables:
   DOCKER_BACKEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-backend
   DOCKER_FRONTEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-frontend
 
-# ============================================
 # Job 1 — Backend Build & Test
-# ============================================
 backend-build-test:
   stage: build-test
   # Pas de tags → GitLab Shared Runner SaaS
@@ -38,9 +33,7 @@ backend-build-test:
       - backend/**/bin/
       - backend/**/obj/
 
-# ============================================
 # Job 2 — Frontend Lint & Build
-# ============================================
 frontend-lint-build:
   stage: build-test
   # Pas de tags → GitLab Shared Runner SaaS
@@ -56,9 +49,7 @@ frontend-lint-build:
       - frontend/.npm/
       - frontend/node_modules/
 
-# ============================================
 # Job 3 — Docker Build & Push (:sha-xxxxx)
-# ============================================
 # BUILD ONCE — tag :sha-{CI_COMMIT_SHORT_SHA}
 # Runner self-hosted ARM64 → build natif linux/arm64 (pas de QEMU)
 docker-build-sha:
@@ -76,7 +67,6 @@ docker-build-sha:
     # Backend — build natif ARM64 (runner self-hosted VPS staging)
     - docker build --network host -t $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./backend
     - docker push $DOCKER_BACKEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
-    # Frontend
     - docker build --network host -t $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA} ./frontend
     - docker push $DOCKER_FRONTEND_IMAGE:sha-${CI_COMMIT_SHORT_SHA}
     - echo "Native ARM64 images pushed with tag sha-${CI_COMMIT_SHORT_SHA}"

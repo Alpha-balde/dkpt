@@ -1,13 +1,10 @@
-# ============================================
 # DKPT — Reusable Workflow : Retag Docker Image
-# ============================================
 # Workflow réutilisable (workflow_call) pour promouvoir
 # une image Docker :sha vers un tag sémantique.
 #
 # Appelé par :
 #   - cd-staging.yml  → tag: staging
 #   - cd-prod.yml     → tag: latest
-# ============================================
 
 name: Reusable — Retag Docker Image
 

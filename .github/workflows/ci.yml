@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — Pipeline CI (GitHub Actions)
-# ============================================
 # Architecture : Build Once, Deploy Many (BODM)
 # Jobs : backend-build-test ──┐
 #        frontend-build       ├──→ docker-build-sha
@@ -12,7 +10,6 @@
 #
 # Sélecteur de plateforme : ce pipeline ne s'exécute que si le
 # message de commit contient [ci:github].
-# ============================================
 
 name: DKPT CI
 
@@ -37,9 +34,7 @@ env:
   DOCKER_FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/dkpt-frontend
 
 jobs:
-  # ============================================
   # Job 1a — Backend Build & Test (parallèle)
-  # ============================================
   backend-build-test:
     name: Backend — Build & Test
     runs-on: ubuntu-22.04
@@ -65,9 +60,7 @@ jobs:
         run: dotnet test --no-build --configuration Release --verbosity minimal
         working-directory: backend
 
-  # ============================================
   # Job 1b — Frontend Build (parallèle)
-  # ============================================
   frontend-build:
     name: Frontend — Lint & Build
     runs-on: ubuntu-22.04
@@ -98,9 +91,7 @@ jobs:
         run: npm run build
         working-directory: frontend
 
-  # ============================================
   # Job 2 — Docker Build & Push (:sha-xxxxx)
-  # ============================================
   # BUILD ONCE — exécuté uniquement sur push (pas sur PR)
   # Tag : sha-{8 premiers chars du SHA du commit}
   docker-build-sha:
@@ -148,4 +139,3 @@ jobs:
           tags: ${{ env.DOCKER_FRONTEND_IMAGE }}:sha-${{ steps.sha.outputs.short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
