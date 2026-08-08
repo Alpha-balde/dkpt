@@ -3,22 +3,6 @@
 # ============================================
 # Fusionne backend et frontend dans un seul job
 # avec toutes les steps séquentielles.
-#
-# Comparaison avec ci.yml (référence) :
-#   - ci.yml : 1 job (backend puis frontend, séquentiel)
-#   - ici   : identique en structure, mais montre que tout
-#             tient dans un seul job sans séparation.
-#
-# Avantages :
-#   - 1 seul runner → pas de temps de démarrage supplémentaire
-#   - 1 seul checkout → filesystem partagé entre toutes les steps
-#   - Vue simplifiée dans l'interface GitHub Actions
-#
-# Inconvénients :
-#   - Pas de parallélisation possible (steps toujours séquentielles)
-#   - Pas de re-run partiel (tout ou rien)
-#   - Si le backend échoue, le frontend ne sera pas testé
-#   - Moins de granularité dans les rapports
 # ============================================
 
 name: "Variante 2 — Single Job"

@@ -6,8 +6,6 @@
 # de l'application après déploiement.
 #
 # Exécuté par l'agent d'environnement (directement sur le VPS).
-# Portable : les mêmes outils (k6, ZAP, Playwright) seront
-# réutilisés sur GitHub Actions, GitLab CI et Bitbucket.
 #
 # Utilisé par : cd-staging.yml
 # ============================================

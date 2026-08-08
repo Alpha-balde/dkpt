@@ -4,13 +4,6 @@
 # Workflow réutilisable (workflow_call) pour promouvoir
 # une image Docker :sha vers un tag sémantique.
 #
-# Usage (QR3 — Réutilisabilité GitHub Actions) :
-#   Ce workflow illustre le mécanisme de réutilisabilité
-#   de GitHub Actions via workflow_call, équivalent aux :
-#     - templates YAML d'Azure DevOps
-#     - include: de GitLab CI
-#     - ancres YAML (&anchor / *alias) de Bitbucket
-#
 # Appelé par :
 #   - cd-staging.yml  → tag: staging
 #   - cd-prod.yml     → tag: latest

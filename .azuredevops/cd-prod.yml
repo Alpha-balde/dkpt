@@ -8,8 +8,6 @@
 #   Les images Docker sont buildées dans le pipeline CI.
 #   Ce pipeline ne fait que déployer et re-tagger.
 #   L'image déployée est exactement celle validée en staging.
-#
-# Équivalent de : .github/workflows/cd-prod.yml
 # ============================================
 
 trigger: none

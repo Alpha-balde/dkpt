@@ -3,10 +3,6 @@
 # ============================================
 # Sépare le build/test backend et frontend en
 # deux jobs parallèles pour réduire le temps total.
-#
-# Comparaison avec ci.yml (référence) :
-#   - ci.yml : 1 job séquentiel (backend PUIS frontend)
-#   - ici   : 2 jobs parallèles (backend ET frontend en même temps)
 # ============================================
 
 name: "Variante 1 — Parallel"

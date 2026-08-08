@@ -8,7 +8,6 @@
 #
 # Runner CI : GitLab shared runners (hosted) — image Docker spécifiée par job
 # Runner Docker/CD : VPS Staging ARM64 self-hosted (tag: unbuntu_arm64)
-# Configuration équitable Hybrid Optimal (Échantillon A)
 # ============================================
 
 stages:
@@ -26,7 +25,7 @@ variables:
 # ============================================
 backend-build-test:
   stage: build-test
-  # Pas de tags → GitLab Shared Runner SaaS — Échantillon A (CI Hosted)
+  # Pas de tags → GitLab Shared Runner SaaS
   image: mcr.microsoft.com/dotnet/sdk:9.0
   script:
     - cd backend
@@ -44,7 +43,7 @@ backend-build-test:
 # ============================================
 frontend-lint-build:
   stage: build-test
-  # Pas de tags → GitLab Shared Runner SaaS — Échantillon A (CI Hosted)
+  # Pas de tags → GitLab Shared Runner SaaS
   image: node:22-alpine
   script:
     - cd frontend
@@ -62,7 +61,6 @@ frontend-lint-build:
 # ============================================
 # BUILD ONCE — tag :sha-{CI_COMMIT_SHORT_SHA}
 # Runner self-hosted ARM64 → build natif linux/arm64 (pas de QEMU)
-# Équivalent du runner ubuntu-24.04-arm de GitHub Actions
 docker-build-sha:
   stage: docker
   tags:

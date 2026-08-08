@@ -3,20 +3,6 @@
 # ============================================
 # Utilise la matrix strategy pour tester le build
 # sur plusieurs OS et versions de runtime.
-#
-# Comparaison avec ci.yml (référence) :
-#   - ci.yml : 1 seul runner (ubuntu-latest, .NET 9, Node 20)
-#   - ici   : matrix de combinaisons OS × version
-#
-# Avantages :
-#   - Vérifie la portabilité de l'application
-#   - Détecte les bugs spécifiques à un OS ou une version
-#   - Tous les jobs de la matrice s'exécutent en parallèle
-#
-# Inconvénients :
-#   - Consomme plus de minutes GitHub Actions (multiplicateur)
-#   - Temps total plus long (attente du job le plus lent)
-#   - Pertinence limitée si le déploiement cible toujours Linux/Docker
 # ============================================
 
 name: "Variante 4 — Matrix Strategy"

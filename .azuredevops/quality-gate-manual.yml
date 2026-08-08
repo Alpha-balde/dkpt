@@ -11,13 +11,6 @@
 #
 # Prérequis : l'application doit être déployée sur staging.
 # Exécuté par l'agent d'environnement (directement sur le VPS staging).
-#
-# Note architecturale :
-#   Ce pipeline est volontairement séparé du CD Staging pour harmoniser
-#   Azure DevOps avec les 3 autres plateformes (GitHub, GitLab, Bitbucket)
-#   qui n'implémentent pas encore de quality gate automatisé.
-#   Le quality gate reste disponible comme démonstration des capacités
-#   avancées d'Azure DevOps (AZ-400).
 # ============================================
 
 trigger: none  # Déclenchement manuel uniquement

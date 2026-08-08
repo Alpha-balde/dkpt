@@ -7,15 +7,10 @@
 #
 # Sélecteur de plateforme : ce pipeline ne s'exécute que si le
 # message de commit contient [ci:gitlab].
-# Exemples :
-#   git commit -m "fix: auth [ci:gitlab]"
-#   git commit -m "release: v1.2 [ci:gitlab]"
-#
 # Contrainte GitLab : ce fichier DOIT être à la racine
 # (ou le chemin configuré dans Settings → CI/CD → General)
 #
 # Pipelines enfants dans .gitlab/pipelines/
-# Comparaison : voir docs/ci-comparison/gitlab-ci.md
 # ============================================
 
 stages:

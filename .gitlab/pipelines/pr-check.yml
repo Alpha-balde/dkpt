@@ -3,8 +3,6 @@
 # ============================================
 # Vérification des Merge Requests (build + test, sans deploy)
 # Déclenché par l'orchestrateur parent sur merge_request_event
-#
-# Équivalent de : .github/workflows/pr-check.yml
 # ============================================
 
 stages:

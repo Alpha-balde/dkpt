@@ -8,7 +8,6 @@
 # Aucun docker build ici — l'image vient du CI.
 #
 # Déclenché par l'orchestrateur parent sur la branche main
-# Équivalent de : .github/workflows/cd-prod.yml
 # ============================================
 
 include:

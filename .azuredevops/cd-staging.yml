@@ -10,8 +10,6 @@
 #
 # Quality Gate (k6, ZAP, Playwright) : pipeline séparé
 #   → quality-gate-manual.yml (déclenchement manuel)
-#
-# Équivalent de : .github/workflows/cd-staging.yml
 # ============================================
 
 trigger: none

@@ -8,9 +8,6 @@
 # Aucun docker build ici — l'image vient du job docker-build-sha du CI.
 # Le sha est récupéré via github.event.workflow_run.head_sha.
 #
-# Plateforme : GitHub Actions
-# Environnement : Staging — https://staging.dkpt.soguimod.com
-# Comparaison : voir docs/ci-comparison/github-actions.md
 # ============================================
 
 name: DKPT CD — Staging
@@ -104,7 +101,6 @@ jobs:
   # ============================================
   # Job 2 — Retag :staging (via reusable workflow)
   # ============================================
-  # Réutilisabilité GitHub Actions (QR3) :
   # La logique de retag est centralisée dans reusable-retag.yml
   # et appelée ici via workflow_call.
   retag:

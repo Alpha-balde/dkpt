@@ -3,9 +3,6 @@
 # ============================================
 # Déclenché sur les Pull Requests vers main ou develop
 # Job : vérification rapide (build + test, sans deploy)
-#
-# Plateforme : GitHub Actions
-# Comparaison : voir docs/ci-comparison/github-actions.md
 # ============================================
 
 name: DKPT PR Check
