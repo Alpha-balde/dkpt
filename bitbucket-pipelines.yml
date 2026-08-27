@@ -1,44 +1,26 @@
-# ============================================
 # DKPT — Bitbucket Pipelines
-# ============================================
 # Architecture : Build Once, Deploy Many (BODM)
 #
 # Contrainte Bitbucket : un seul fichier à la racine.
-# Pas de chaînage inter-pipelines — tout est dans branches: main:
 #
 # Sélecteur de plateforme : les steps du pipeline main ne s'exécutent
 # que si le message de commit contient [ci:bitbucket].
-# Exemples :
-#   git commit -m "fix: auth [ci:bitbucket]"
-#   git commit -m "release: v1.2 [ci:bitbucket]"
 # Runner CI : Bitbucket cloud runners (hosted) — image Docker spécifiée par step
 # Runner Docker/CD : VPS self-hosted ARM64 (runs-on: [self.hosted, linux])
-# Configuration équitable Hybrid Optimal (Échantillon A)
 # Flux BODM dans branches: main:
 #   CI (build+test) → Docker build :sha → Deploy staging → Retag :staging
 #                                       → Deploy prod (manual) → Retag :latest
-#
-# Équivalent de :
-#   - .github/workflows/ci.yml          → default: + étapes 1-2 de branches: main:
-#   - .github/workflows/cd-staging.yml  → étapes 3-4 de branches: main:
-#   - .github/workflows/cd-prod.yml     → étape 5 de branches: main:
-#   - .github/workflows/pr-check.yml    → pull-requests:
-#
-# Comparaison : voir docs/ci-comparison/bitbucket.md
-# ============================================
 
 image: atlassian/default-image:5
 
 definitions:
-  # ============================================
   # Steps réutilisables (YAML anchors)
-  # ============================================
   steps:
     # ---- Step : Backend Build & Test ----
     - step: &build-test-backend
         name: 'Backend — Build & Test'
         image: mcr.microsoft.com/dotnet/sdk:9.0
-        # Pas de runs-on → Bitbucket cloud runner (hosted) — Échantillon A (re-collecte)
+        # Pas de runs-on → Bitbucket cloud runner (hosted)
         caches:
           - dotnetcore
         script:
@@ -53,7 +35,7 @@ definitions:
     - step: &build-frontend
         name: 'Frontend — Lint & Build'
         image: node:22-alpine
-        # Pas de runs-on → Bitbucket cloud runner (hosted) — Échantillon A (re-collecte)
+        # Pas de runs-on → Bitbucket cloud runner (hosted)
         caches:
           - node
         script:
@@ -99,16 +81,12 @@ definitions:
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # SSH chargé automatiquement via Bitbucket SSH Keys (Repository Settings)
-          # Prepare VPS directory
           - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
-          # Copy infrastructure files
           - scp docker-compose.prod.yml $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
           - scp -r caddy/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
           - scp -r docker/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
           - scp -r scripts/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
-          # Generate .env with IMAGE_TAG=sha-$SHORT_SHA
           - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' POSTGRES_PASSWORD='$POSTGRES_PASSWORD' JWT_SECRET_KEY='$JWT_SECRET_KEY' JWT_ISSUER='$JWT_ISSUER' JWT_AUDIENCE='$JWT_AUDIENCE' CORS_ORIGINS='$CORS_ORIGINS' NUXT_PUBLIC_API_BASE='$NUXT_PUBLIC_API_BASE' SITE_ADDRESS='$SITE_ADDRESS' APPLICATIONINSIGHTS_CONNECTION_STRING='$APPLICATIONINSIGHTS_CONNECTION_STRING' IMAGE_TAG=sha-$SHORT_SHA bash /opt/dkpt/scripts/generate-env.sh"
-          # Deploy
           - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "bash /opt/dkpt/scripts/deploy.sh"
           # BODM — Retag :staging
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -135,16 +113,12 @@ definitions:
           - 'git log -1 --pretty=%B | grep -q "ci:bitbucket" || { echo "[ci:bitbucket] absent — déploiement ignoré"; exit 0; }'
           - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-8)
           # SSH chargé automatiquement via Bitbucket SSH Keys (Repository Settings)
-          # Prepare VPS directory
           - ssh $VPS_USER@$VPS_HOST "sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
-          # Copy infrastructure files
           - scp docker-compose.prod.yml $VPS_USER@$VPS_HOST:/opt/dkpt/
           - scp -r caddy/ $VPS_USER@$VPS_HOST:/opt/dkpt/
           - scp -r docker/ $VPS_USER@$VPS_HOST:/opt/dkpt/
           - scp -r scripts/ $VPS_USER@$VPS_HOST:/opt/dkpt/
-          # Generate .env with IMAGE_TAG=sha-$SHORT_SHA (même image que staging)
           - ssh $VPS_USER@$VPS_HOST "POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' POSTGRES_PASSWORD='$POSTGRES_PASSWORD' JWT_SECRET_KEY='$JWT_SECRET_KEY' JWT_ISSUER='$JWT_ISSUER' JWT_AUDIENCE='$JWT_AUDIENCE' CORS_ORIGINS='$CORS_ORIGINS' NUXT_PUBLIC_API_BASE='$NUXT_PUBLIC_API_BASE' SITE_ADDRESS='$SITE_ADDRESS' APPLICATIONINSIGHTS_CONNECTION_STRING='$APPLICATIONINSIGHTS_CONNECTION_STRING' IMAGE_TAG=sha-$SHORT_SHA bash /opt/dkpt/scripts/generate-env.sh"
-          # Deploy
           - ssh $VPS_USER@$VPS_HOST "bash /opt/dkpt/scripts/deploy.sh"
           # BODM — Retag :latest
           - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -163,38 +137,37 @@ definitions:
   caches:
     dotnetcore: backend/**/obj
 
-# ============================================
 # Pipelines
-# ============================================
 pipelines:
 
-  # ============================================
   # CI — Feature branches (build & test uniquement)
-  # ============================================
   default:
-    - step: *build-test-backend
-    - step: *build-frontend
+    - parallel:
+        fail-fast: true
+        steps:
+          - step: *build-test-backend
+          - step: *build-frontend
 
-  # ============================================
   # branches: main — Pipeline BODM complet
-  # ============================================
   # Flux : CI → Docker build :sha → Deploy staging → Deploy prod (manual)
   # Une seule image construite, promue de staging vers production.
-  # Note : Bitbucket ne supporte pas le chaînage inter-pipelines.
-  #        CI et CD cohabitent dans ce même bloc (différence vs GitHub/GitLab/Azure).
-  # ============================================
+  # Cette configuration regroupe le CI et le CD dans le pipeline de la branche main.
   branches:
     main:
-      - step: *build-test-backend
-      - step: *build-frontend
+      - parallel:
+          fail-fast: true
+          steps:
+            - step: *build-test-backend
+            - step: *build-frontend
       - step: *docker-build-sha
       - step: *deploy-staging
       - step: *deploy-prod
 
-  # ============================================
   # PR Check — Vérification des Pull Requests
-  # ============================================
   pull-requests:
     '**':
-      - step: *build-test-backend
-      - step: *build-frontend
+      - parallel:
+          fail-fast: true
+          steps:
+            - step: *build-test-backend
+            - step: *build-frontend

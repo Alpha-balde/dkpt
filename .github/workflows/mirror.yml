@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — Mirror Repository
-# ============================================
 # Synchronise le repo GitHub vers les plateformes miroirs :
 #   - GitLab   (SSH push — pull mirror natif = Premium uniquement)
 #   - Bitbucket (SSH push — pas de pull mirror natif)
@@ -8,7 +6,6 @@
 # Note : Azure DevOps utilise GitHub App (connexion directe, pas de mirror).
 #
 # Déclenché sur chaque push vers main
-# ============================================
 
 name: Mirror Repositories
 
@@ -18,9 +15,7 @@ on:
     branches: [main]
 
 jobs:
-  # ============================================
   # Job — Mirror to all platforms
-  # ============================================
   mirror:
     name: Mirror to CI platforms
     runs-on: ubuntu-latest

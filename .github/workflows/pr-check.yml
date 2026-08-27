@@ -1,12 +1,6 @@
-# ============================================
 # DKPT — Pipeline PR Check (GitHub Actions)
-# ============================================
 # Déclenché sur les Pull Requests vers main ou develop
 # Job : vérification rapide (build + test, sans deploy)
-#
-# Plateforme : GitHub Actions
-# Comparaison : voir docs/ci-comparison/github-actions.md
-# ============================================
 
 name: DKPT PR Check
 
@@ -22,9 +16,7 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  # ============================================
   # Job 1 — Backend Check
-  # ============================================
   check-backend:
     name: "Backend — Build & Test"
     runs-on: ubuntu-latest
@@ -50,9 +42,7 @@ jobs:
         run: dotnet test --no-build --configuration Release --verbosity minimal
         working-directory: backend
 
-  # ============================================
   # Job 2 — Frontend Check
-  # ============================================
   check-frontend:
     name: "Frontend — Build"
     runs-on: ubuntu-latest

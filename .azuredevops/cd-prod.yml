@@ -1,6 +1,4 @@
-# ============================================
 # DKPT — Azure DevOps : Pipeline CD Production
-# ============================================
 # Deploy sur VPS production
 # Déclenché après succès du pipeline CD Staging sur main
 #
@@ -8,9 +6,6 @@
 #   Les images Docker sont buildées dans le pipeline CI.
 #   Ce pipeline ne fait que déployer et re-tagger.
 #   L'image déployée est exactement celle validée en staging.
-#
-# Équivalent de : .github/workflows/cd-prod.yml
-# ============================================
 
 trigger: none
 
@@ -32,9 +27,7 @@ variables:
     value: '$(DOCKERHUB_USERNAME)/dkpt-frontend'
 
 stages:
-  # ============================================
   # Stage — Deploy to Production VPS
-  # ============================================
   - stage: DeployProd
     displayName: 'Deploy to Production'
     jobs:

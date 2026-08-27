@@ -1,13 +1,6 @@
-# ============================================
 # DKPT — Variante 1 : Jobs parallèles
-# ============================================
 # Sépare le build/test backend et frontend en
 # deux jobs parallèles pour réduire le temps total.
-#
-# Comparaison avec ci.yml (référence) :
-#   - ci.yml : 1 job séquentiel (backend PUIS frontend)
-#   - ici   : 2 jobs parallèles (backend ET frontend en même temps)
-# ============================================
 
 name: "Variante 1 — Parallel"
 
@@ -19,9 +12,7 @@ env:
   NODE_VERSION: "20"
 
 jobs:
-  # ============================================
   # Job 1a — Backend (en parallèle avec frontend)
-  # ============================================
   test-backend:
     name: "Backend — Build & Test"
     runs-on: ubuntu-latest
@@ -47,9 +38,7 @@ jobs:
         run: dotnet test --no-build --configuration Release --verbosity minimal
         working-directory: backend
 
-  # ============================================
   # Job 1b — Frontend (en parallèle avec backend)
-  # ============================================
   test-frontend:
     name: "Frontend — Build & Test"
     runs-on: ubuntu-latest

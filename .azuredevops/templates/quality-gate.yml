@@ -1,21 +1,14 @@
-# ============================================
 # DKPT — Azure DevOps : Template Quality Gate
-# ============================================
 # Tests post-déploiement exécutés sur le VPS staging.
 # Vérifie la performance, la sécurité et le fonctionnel
 # de l'application après déploiement.
 #
 # Exécuté par l'agent d'environnement (directement sur le VPS).
-# Portable : les mêmes outils (k6, ZAP, Playwright) seront
-# réutilisés sur GitHub Actions, GitLab CI et Bitbucket.
 #
 # Utilisé par : cd-staging.yml
-# ============================================
 
 steps:
-  # ============================================
   # k6 — Load Testing
-  # ============================================
   - script: |
       echo "⚡ Checking k6 installation..."
       if ! command -v k6 &> /dev/null; then
@@ -49,9 +42,7 @@ steps:
       artifactName: 'k6-results'
     condition: always()
 
-  # ============================================
   # OWASP ZAP — Security Scanning (DAST)
-  # ============================================
   - script: |
       echo "🛡️ Running OWASP ZAP baseline scan..."
       mkdir -p zap-reports
@@ -89,9 +80,7 @@ steps:
       artifactName: 'zap-security-reports'
     condition: always()
 
-  # ============================================
   # Playwright — E2E Functional Tests
-  # ============================================
   - script: |
       SOURCES="$(System.DefaultWorkingDirectory)"
       if [ ! -d "$SOURCES/tests/e2e" ]; then

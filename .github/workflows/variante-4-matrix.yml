@@ -1,23 +1,6 @@
-# ============================================
 # DKPT — Variante 4 : Matrix Strategy
-# ============================================
 # Utilise la matrix strategy pour tester le build
 # sur plusieurs OS et versions de runtime.
-#
-# Comparaison avec ci.yml (référence) :
-#   - ci.yml : 1 seul runner (ubuntu-latest, .NET 9, Node 20)
-#   - ici   : matrix de combinaisons OS × version
-#
-# Avantages :
-#   - Vérifie la portabilité de l'application
-#   - Détecte les bugs spécifiques à un OS ou une version
-#   - Tous les jobs de la matrice s'exécutent en parallèle
-#
-# Inconvénients :
-#   - Consomme plus de minutes GitHub Actions (multiplicateur)
-#   - Temps total plus long (attente du job le plus lent)
-#   - Pertinence limitée si le déploiement cible toujours Linux/Docker
-# ============================================
 
 name: "Variante 4 — Matrix Strategy"
 
@@ -25,9 +8,7 @@ on:
   workflow_dispatch:  # Déclenchement manuel uniquement
 
 jobs:
-  # ============================================
   # Job 1 — Backend : matrice OS × .NET version
-  # ============================================
   test-backend:
     name: "Backend — ${{ matrix.os }} / .NET ${{ matrix.dotnet }}"
     runs-on: ${{ matrix.os }}
@@ -59,9 +40,7 @@ jobs:
         run: dotnet test --no-build --configuration Release --verbosity minimal
         working-directory: backend
 
-  # ============================================
   # Job 2 — Frontend : matrice OS × Node version
-  # ============================================
   test-frontend:
     name: "Frontend — ${{ matrix.os }} / Node ${{ matrix.node }}"
     runs-on: ${{ matrix.os }}

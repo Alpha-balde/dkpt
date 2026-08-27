@@ -1,14 +1,10 @@
-# ============================================
 # DKPT — GitLab CI : Pipeline enfant CD Staging
-# ============================================
 # Architecture : Build Once, Deploy Many (BODM)
 # Pull l'image :sha-{CI_COMMIT_SHORT_SHA} construite par le CI,
 # déploie sur VPS staging, puis retag :staging.
 # Aucun docker build ici — l'image vient du CI.
 #
 # Déclenché par l'orchestrateur parent sur la branche main
-# Équivalent de : .github/workflows/cd-staging.yml
-# ============================================
 
 include:
   - local: /.gitlab/pipelines/shared/retag-job.yml
@@ -21,9 +17,7 @@ variables:
   DOCKER_BACKEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-backend
   DOCKER_FRONTEND_IMAGE: $DOCKERHUB_USERNAME/dkpt-frontend
 
-# ============================================
 # Job 1 — Deploy to Staging VPS
-# ============================================
 deploy-staging:
   stage: deploy
   tags:
@@ -41,22 +35,16 @@ deploy-staging:
     - echo "StrictHostKeyChecking=no" >> ~/.ssh/config
   script:
     - echo "🚀 Deploying sha-${CI_COMMIT_SHORT_SHA} to staging..."
-    # Prepare VPS directory
     - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "sudo mkdir -p /opt/dkpt/caddy /opt/dkpt/docker/seed && sudo rm -rf /opt/dkpt/nginx && sudo chown -R \$(whoami):\$(whoami) /opt/dkpt"
-    # Copy infrastructure files
     - scp docker-compose.prod.yml $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
     - scp -r caddy/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
     - scp -r docker/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
     - scp -r scripts/ $VPS_STAGING_USER@$VPS_STAGING_HOST:/opt/dkpt/
-    # Generate .env with IMAGE_TAG=sha-$CI_COMMIT_SHORT_SHA (BODM)
     - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "POSTGRES_DB='$POSTGRES_DB' POSTGRES_USER='$POSTGRES_USER' POSTGRES_PASSWORD='$POSTGRES_PASSWORD' JWT_SECRET_KEY='$JWT_SECRET_KEY' JWT_ISSUER='$JWT_ISSUER' JWT_AUDIENCE='$JWT_AUDIENCE' CORS_ORIGINS='$CORS_ORIGINS' NUXT_PUBLIC_API_BASE='$NUXT_PUBLIC_API_BASE' SITE_ADDRESS='$SITE_ADDRESS' APPLICATIONINSIGHTS_CONNECTION_STRING='$APPLICATIONINSIGHTS_CONNECTION_STRING' IMAGE_TAG=sha-${CI_COMMIT_SHORT_SHA} bash /opt/dkpt/scripts/generate-env.sh"
-    # Deploy (docker compose pull :sha + up)
     - ssh $VPS_STAGING_USER@$VPS_STAGING_HOST "bash /opt/dkpt/scripts/deploy.sh"
     - echo "✅ Staging deployed with image sha-${CI_COMMIT_SHORT_SHA}"
 
-# ============================================
 # Job 2 — Retag :staging (BODM — promote sha image)
-# ============================================
 retag-staging:
   extends: .retag-job
   stage: retag
