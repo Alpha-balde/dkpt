@@ -142,8 +142,11 @@ pipelines:
 
   # CI — Feature branches (build & test uniquement)
   default:
-    - step: *build-test-backend
-    - step: *build-frontend
+    - parallel:
+        fail-fast: true
+        steps:
+          - step: *build-test-backend
+          - step: *build-frontend
 
   # branches: main — Pipeline BODM complet
   # Flux : CI → Docker build :sha → Deploy staging → Deploy prod (manual)
@@ -151,8 +154,11 @@ pipelines:
   # Cette configuration regroupe le CI et le CD dans le pipeline de la branche main.
   branches:
     main:
-      - step: *build-test-backend
-      - step: *build-frontend
+      - parallel:
+          fail-fast: true
+          steps:
+            - step: *build-test-backend
+            - step: *build-frontend
       - step: *docker-build-sha
       - step: *deploy-staging
       - step: *deploy-prod
@@ -160,5 +166,8 @@ pipelines:
   # PR Check — Vérification des Pull Requests
   pull-requests:
     '**':
-      - step: *build-test-backend
-      - step: *build-frontend
+      - parallel:
+          fail-fast: true
+          steps:
+            - step: *build-test-backend
+            - step: *build-frontend
